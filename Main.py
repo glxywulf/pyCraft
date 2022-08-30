@@ -12,13 +12,28 @@ app = Ursina()
 
 for i in range(16):
     for j in range(16):
-        block = Block(position = (i,0,j))
+        # for k in range(64):
+        block = Block('dirt', position = (i,0,j))
         
 player = FirstPersonController()
 
+pos = str(player.position)
+pos = pos[4: ]
+Text.default_resolution = 1080 * Text.size
+test = Text(text = pos, wordwrap = 100, origin = (9.4, -19.5)) #9.4, -19.5
 
+def update():
+    pos = str(player.position)
+    pos = pos[4: ]
+    test.text = pos
+    
+    
+    
+update()
 app.run()
 
 # Controller ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
 
 # View ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
