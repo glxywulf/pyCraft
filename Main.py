@@ -13,7 +13,9 @@ app = Ursina()
 for i in range(16):
     for j in range(16):
         # for k in range(64):
-        block = Block('dirt', position = (i,0,j))
+        Block('dirt', position = (i,0,j))
+        
+Block(None, position = (8, 1, 8))
         
 player = FirstPersonController()
 
