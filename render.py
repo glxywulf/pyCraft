@@ -8,6 +8,25 @@ from numpy import ndarray
 from typing import List, Tuple, Optional, Any
 # from world import BlockPos, adjacentBlockPos
 
+class Model:
+    def __init__(self, vertices, faces):
+        self.vertices = vertices
+        self.faces = []
+        
+        for face in faces:
+            if(len(face) == 3):
+                self.faces.append(face)
+            else:
+                raise Exception("Invalid face")
+            
+class Instance:
+    def __init__(self, model, translation, texture):
+        pass
+
+
+
+
+
 def drawToCanvas(app, canvas, faces):
     pass
 

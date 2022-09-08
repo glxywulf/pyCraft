@@ -35,16 +35,16 @@ import numpy as np
 
 # assert(cartesian.shape[1] == 1)
 
-test = np.array([[0], [0], [0]])
-print(test)
+# test = np.array([[0], [0], [0]])
+# print(test)
 
-def isPrime(n):
-    return np.array([[0], [0], [0]])
+# def isPrime(n):
+#     return np.array([[0], [0], [0]])
 
-def nthPrime(n):
-    return np.array([[0], [0], [0]])
+# def nthPrime(n):
+#     return np.array([[0], [0], [0]])
 
-isPrime(9) @ nthPrime(22)
+# isPrime(9) @ nthPrime(22)
 
 # ? weird syntax thing
 
@@ -58,3 +58,7 @@ isPrime(9) @ nthPrime(22)
 
 # print(Color)
 # print(thing)
+
+test = (1,2,3)
+
+print(len(test))
