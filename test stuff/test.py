@@ -1,6 +1,8 @@
 from typing import NamedTuple, List, Any, Tuple, Optional
 from numpy import ndarray
 import numpy as np
+import matplotlib.pyplot as plt
+from perlin_noise import *
 
 # class Thing(NamedTuple):
     
@@ -59,6 +61,38 @@ import numpy as np
 # print(Color)
 # print(thing)
 
-test = (1,2,3)
+# test = (1,2,3)
 
-print(len(test))
+# print(len(test))
+
+# thing = [None] * 20
+
+# print(list(enumerate(thing)))
+
+# for (i, instance) in (enumerate(thing)):
+#     print((i, instance))
+
+# noise1 = PerlinNoise(octaves=25)
+# noise2 = PerlinNoise(octaves=50)
+# noise3 = PerlinNoise(octaves=75)
+# noise4 = PerlinNoise(octaves=100)
+
+# width = 500
+# height = 500
+
+# pic = []
+
+# for i in range(width):
+#     row = []
+#     for j in range(height):
+#         noise_val = noise1([i/width, j/height])
+#         noise_val += 0.5 * noise2([i/width, j/height])
+#         noise_val += 0.25 * noise3([i/width, j/height])
+#         noise_val += 0.125 * noise4([i/width, j/height])
+        
+#         row.append(noise_val)
+    
+#     pic.append(row)
+    
+# plt.imshow(pic, cmap = 'gray')
+# plt.show()

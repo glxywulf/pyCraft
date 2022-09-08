@@ -21,10 +21,32 @@ class Model:
             
 class Instance:
     def __init__(self, model, translation, texture):
-        pass
+        self.model = model
+        self.trans = translation
+        self.texture = texture
+        self.vertices = list(map(thing, self.listOfVert())) # ! Figure out what this is
+        
+    # returns list of translated vertices    
+    def listOfVert(self):
+        # result variable list
+        result = []
+        
+        # for every vertice add the translation value and then append into result list
+        for vertice in self.model.vertices:
+            result.append(vertice + self.trans)
+        
+        return result
+    
+# ! Figure out what this is
+def thing(a):
+    assert(a.shape[1] == 1)
+    
+    return np.array([[a[0, 0]], [a[1, 0]], [a[2, 0]], [1]])
+    
+    
 
 
-
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 def drawToCanvas(app, canvas, faces):
@@ -40,6 +62,9 @@ def redrawAll(app, canvas):
     
     # creates the sky
     canvas.create_rectangle(0.0, 0.0, app.width, app.height, fill = '#0080FF')
+    
+    # cursor
+    canvas.create_oval(app.width / 2 - 1, app.height / 2 - 1, app.width / 2 + 1, app.height / 2 + 1)
     
     # access the variables global in this file
     global frameTimes
