@@ -38,7 +38,7 @@ class Instance:
         return result
     
 # ! Figure out what this is
-def thing(a):
+def turnToMatRow(a):
     assert(a.shape[1] == 1)
     
     return np.array([[a[0, 0]], [a[1, 0]], [a[2, 0]], [1]])

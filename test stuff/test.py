@@ -1,7 +1,7 @@
 from typing import NamedTuple, List, Any, Tuple, Optional
 from numpy import ndarray
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from perlin_noise import *
 
 # class Thing(NamedTuple):
@@ -41,14 +41,16 @@ from perlin_noise import *
 # print(test)
 
 # def isPrime(n):
-#     return np.array([[0], [0], [0]])
+#     return np.array([[7, 5], [3,-2]])
 
 # def nthPrime(n):
-#     return np.array([[0], [0], [0]])
+#     return np.array([[4,8,2],[6,-12,1]])
 
-# isPrime(9) @ nthPrime(22)
+# print(isPrime(9) @ nthPrime(9))
 
-# ? weird syntax thing
+# # ? weird syntax thing
+
+# ! @ between two ndarrays is matrix multiplication
 
 # thing = Tuple[int, int, int]
 # thing = (1,'hi',3)
@@ -96,3 +98,99 @@ from perlin_noise import *
     
 # plt.imshow(pic, cmap = 'gray')
 # plt.show()
+
+# TODO Help David
+
+# ? hasDigit, 
+
+# def hasProperty309(n):
+#     n = n ** 5
+    
+#     has1 = False
+#     has2 = False
+#     has3 = False
+#     has4 = False
+#     has5 = False
+#     has6 = False
+#     has7 = False
+#     has8 = False
+#     has9 = False
+#     has0 = False
+    
+#     while(n > 0):
+#         check = n % 10
+        
+#         if(check == 0):
+#             has0 = True
+#         elif(check == 1):
+#             has1 = True
+#         elif(check == 2):
+#             has2 = True
+#         elif(check == 3):
+#             has3 = True
+#         elif(check == 4):
+#             has4 = True
+#         elif(check == 5):
+#             has5 = True
+#         elif(check == 6):
+#             has6 = True
+#         elif(check == 7):
+#             has7 = True
+#         elif(check == 8):
+#             has8 = True
+#         elif(check == 9):
+#             has9 = True
+            
+#         n //= 10
+        
+#     if not(has0 and has1 and has2 and has3 and has4 and has5 and has6 and has7 and has8 and has9):
+#         return False
+    
+#     return True
+        
+    
+# print(hasProperty309(418))
+
+
+# ? ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# faces = [
+#         # Left
+#         (0, 2, 1),
+#         (1, 2, 3),
+#         # Right
+#         (4, 5, 6),
+#         (6, 5, 7),
+#         # Near
+#         (0, 4, 2),
+#         (2, 4, 6),
+#         # Far
+#         (5, 1, 3),
+#         (5, 3, 7),
+#         # Bottom
+#         (0, 1, 4),
+#         (4, 1, 5),
+#         # Top
+#         (3, 2, 6),
+#         (3, 6, 7),
+#     ]
+
+# # (np.array([[modelX], [modelY], [modelZ]]), texture)
+
+# def listOfVert():
+#     # result variable list
+#     result = []
+    
+#     # for every vertice add the translation value and then append into result list
+#     for vertice in faces:
+#         result.append(vertice + 2)
+    
+#     return result
+
+# def thing(a):
+#     assert(a.shape[1] == 1)
+    
+#     return np.array([[a[0, 0]], [a[1, 0]], [a[2, 0]], [1]])
+
+# print(listOfVert())
+
