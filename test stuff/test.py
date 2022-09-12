@@ -194,3 +194,8 @@ from perlin_noise import *
 
 # print(listOfVert())
 
+a = np.array([[1], [2], [3], [4]])
+
+print(a)
+print(a.ravel())
+print(a[ :-1] / a[-1])

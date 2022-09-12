@@ -24,10 +24,15 @@ class Instance:
         self.model = model
         self.trans = translation
         self.texture = texture
-        self.vertices = list(map(thing, self.listOfVert())) # ! Figure out what this is
-        
+        self.vertices = list(map(turnToMatRow, self.transVert()))
+        self.visibleFaces = [True] * len(model.faces)
+    
+    # returns list of instance vertices
+    def getVertices(self):
+        return self.vertices
+    
     # returns list of translated vertices    
-    def listOfVert(self):
+    def transVert(self):
         # result variable list
         result = []
         
@@ -37,12 +42,65 @@ class Instance:
         
         return result
     
-# ! Figure out what this is
+# turns an inputted array into a ndarray that represents a row in a matrix.
 def turnToMatRow(a):
     assert(a.shape[1] == 1)
     
     return np.array([[a[0, 0]], [a[1, 0]], [a[2, 0]], [1]])
+
+# turns a matrix row into a cartesian coordinate
+def matRowToCoord(a):
+    # make sure the inputted array has one column
+    assert(a.shape[1] == 1)
     
+    # flatten the array into a 1d list of the values
+    a = a.ravel()
+    
+    # return the first 3 values divided by the last value to get coordinates
+    # that are a cartesian representation of the vertice
+    return a[ :-1] / a[-1]
+
+# returns a array with values of a vector that's been translated about the x-axis
+# in the form of a matrix
+# formula from: https://www.redcrab-software.com/en/Calculator/4x4/Matrix/Rotation-X
+def rotateX(theta):
+    return np.array([
+        [1, 0, 0, 0],
+        [0, math.cos(theta), -math.sin(theta),0],
+        [0, math.sin(theta), math.cos(theta), 0],
+        [0, 0, 0, 1]
+    ])
+
+# returns a array with values of a vector that's been translated about the y-axis
+# in the form of a matrix
+# formula from: https://www.redcrab-software.com/en/Calculator/4x4/Matrix/Rotation-Y
+def rotateY(theta):
+    return np.array([
+        [math.cos(theta), 0, math.sin(theta), 0],
+        [0, 1, 0, 0],
+        [-math.sin(theta), 0, math.cos(theta), 0],
+        [0, 0, 0, 1]
+    ])
+
+# returns a array with values of a vector that's been translated about the z-axis
+# in the form of a matrix
+# formula from: https://www.redcrab-software.com/en/Calculator/4x4/Matrix/Rotation-Z
+def rotateZ(theta):
+    return np.array([
+        [math.cos(theta), -math.sin(theta), 0, 0],
+        [math.sin(theta), math.cos(theta), 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+    ])
+
+# returns a matrix that holds translation values for the vertice
+def transMatrix(x, y, z):
+    return np.array([
+        [1, 0, 0, x],
+        [0, 1, 0, y],
+        [0, 0, 1, z],
+        [0, 0, 0, 1]
+    ])
     
 
 
