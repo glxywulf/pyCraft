@@ -194,8 +194,33 @@ from perlin_noise import *
 
 # print(listOfVert())
 
-a = np.array([[1], [2], [3], [4]])
+# a = np.array([[1], [2], [3], [4]])
 
-print(a)
-print(a.ravel())
-print(a[ :-1] / a[-1])
+# print(a)
+# print(a.ravel())
+# print(a[ :-1] / a[-1])
+
+# 3/4, 3/4, 1000, 1000
+
+# w = 1000 / (3/4)
+# h = -1000 / (3/4)
+
+# x = 1000 * 0.5
+# y = 1000 * 0.5
+
+# vptcm = np.array([
+#     [w, 0, x],
+#     [0, h, y],
+#     [0, 0, 1]
+# ])
+
+# vpd = .25
+
+# ctvm = np.array([
+#     [vpd, 0, 0, 0],
+#     [0, vpd, 0, 0],
+#     [0, 0, 1, 0]
+# ])
+
+# cp = [4.0, 10.0 + 1.5, 4.0]
+# y = 0

@@ -43,12 +43,14 @@ class Instance:
         return result
     
 # turns an inputted array into a ndarray that represents a row in a matrix.
+# * toHomogenous
 def turnToMatRow(a):
     assert(a.shape[1] == 1)
     
     return np.array([[a[0, 0]], [a[1, 0]], [a[2, 0]], [1]])
 
 # turns a matrix row into a cartesian coordinate
+# * toCartesian
 def matRowToCoord(a):
     # make sure the inputted array has one column
     assert(a.shape[1] == 1)
@@ -102,6 +104,32 @@ def transMatrix(x, y, z):
         [0, 0, 0, 1]
     ])
     
+# 
+def spaceCanvMat(camPos, yaw, pitch, vpDist, vpWidth, vpHeight, canvWidth, canvHeight):
+    vp = vpCanvMatrix(vpWidth, vpHeight, canvWidth, canvHeight)
+    
+    
+
+# ! figure out what this means
+def vpCanvMatrix(vpW, vpH, cW, cH):
+    w = cW / vpW
+    h = cH / vpH
+    
+    x = cW * .5
+    y = cH * .5
+    
+    return np.array([
+        [w, 0, x],
+        [0, h, y],
+        [0, 0, 1]
+    ])
+
+
+
+
+
+
+
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
