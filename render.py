@@ -68,8 +68,8 @@ def matRowToCoord(a):
 def rotateX(theta):
     return np.array([
         [1, 0, 0, 0],
-        [0, math.cos(theta), -math.sin(theta),0],
-        [0, math.sin(theta), math.cos(theta), 0],
+        [0, cos(theta), -sin(theta),0],
+        [0, sin(theta), cos(theta), 0],
         [0, 0, 0, 1]
     ])
 
@@ -78,9 +78,9 @@ def rotateX(theta):
 # formula from: https://www.redcrab-software.com/en/Calculator/4x4/Matrix/Rotation-Y
 def rotateY(theta):
     return np.array([
-        [math.cos(theta), 0, math.sin(theta), 0],
+        [cos(theta), 0, sin(theta), 0],
         [0, 1, 0, 0],
-        [-math.sin(theta), 0, math.cos(theta), 0],
+        [-sin(theta), 0, cos(theta), 0],
         [0, 0, 0, 1]
     ])
 
@@ -89,8 +89,8 @@ def rotateY(theta):
 # formula from: https://www.redcrab-software.com/en/Calculator/4x4/Matrix/Rotation-Z
 def rotateZ(theta):
     return np.array([
-        [math.cos(theta), -math.sin(theta), 0, 0],
-        [math.sin(theta), math.cos(theta), 0, 0],
+        [cos(theta), -sin(theta), 0, 0],
+        [sin(theta), cos(theta), 0, 0],
         [0, 0, 1, 0],
         [0, 0, 0, 1]
     ])
@@ -104,12 +104,12 @@ def transMatrix(x, y, z):
         [0, 0, 0, 1]
     ])
     
-# 
+# ! figure out what this means
 def spaceCanvMat(camPos, yaw, pitch, vpDist, vpWidth, vpHeight, canvWidth, canvHeight):
     vp = vpCanvMatrix(vpWidth, vpHeight, canvWidth, canvHeight)
     
+    return vp @ camToVpMatrix(vpDist) @ spaceToCameraMatrix(camPos, yaw, pitch)
     
-
 # ! figure out what this means
 def vpCanvMatrix(vpW, vpH, cW, cH):
     w = cW / vpW
@@ -123,6 +123,32 @@ def vpCanvMatrix(vpW, vpH, cW, cH):
         [0, h, y],
         [0, 0, 1]
     ])
+    
+# ! figure out what this means
+def camToVpMatrix(vpd):
+    return np.array([
+        [vpd, 0, 0, 0],
+        [0, vpd, 0, 0],
+        [0, 0, 1, 0]
+    ])
+    
+# converts the matrix of the point in space into a matrix that the camera understands
+# Original technique from
+# https://gamedev.stackexchange.com/questions/168542/camera-view-matrix-from-position-yaw-pitch-worldup
+# Modified similarly to: https://github.com/SuperTails/112craft 
+def spaceToCameraMatrix(cp, y, p):
+    y = -y
+    a = cp[0]
+    b = cp[1]
+    c = cp[2]
+    
+    return np.array([
+        [cos(y), 0, -sin(y), (c * sin(y)) - (a * cos(y))],
+        [-sin(p) * sin(y), cos(p), -sin(p) * cos(y), (c * sin(p) * cos(y)) + (a * sin(p) * sin(y)) - (b * cos(p))],
+        [cos(p) * sin(y), sin(p), cos(p) * cos(y), (-b * sin(p)) - (a * sin(y) * cos(p)) - (c * cos(y) * cos(p))],
+        [0, 0, 0, 1]
+    ])
+
 
 
 

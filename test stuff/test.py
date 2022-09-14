@@ -224,3 +224,9 @@ from perlin_noise import *
 
 # cp = [4.0, 10.0 + 1.5, 4.0]
 # y = 0
+
+# print(np.array([[-1.0], [-1.0], [-1.0]]) / 2.0)
+
+# blocks = np.full((16,16,16), 'air')
+# print(blocks.size)
+
