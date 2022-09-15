@@ -228,5 +228,25 @@ from perlin_noise import *
 # print(np.array([[-1.0], [-1.0], [-1.0]]) / 2.0)
 
 # blocks = np.full((16,16,16), 'air')
-# print(blocks.size)
+# # print(blocks.shape)
+
+# def coordToID(position):
+#         (x, y, z) = position
+#         (xB, yB, zB) = blocks.shape
+        
+#         return x * 16 * 16 + y * 16 + z
+        
+# def coordFromID(id, thing):
+#     x, y, z = thing
+
+#     xID = id // (y * z)
+#     yID = (id // z) % y
+#     zID = id % z
+    
+#     return (xID, yID, zID)
+
+
+# print(coordToID((15, 15, 15)))
+# print(coordFromID(4095))
+
 
