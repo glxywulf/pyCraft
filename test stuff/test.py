@@ -250,3 +250,15 @@ from perlin_noise import *
 # print(coordFromID(4095))
 
 
+# def thing(t):
+#     for i in range(t):
+#         yield i
+        
+# print(list(thing(10))[1])
+
+# thing = [(-1, 0, 0), (1, 0, 0), (0, 0, -1), (0, 0, 1), (0, -1, 0), (0, 1, 0)][1]
+
+# print(thing)
+
+# instances = [None] * (64)
+# print(instances)

@@ -72,5 +72,41 @@ class Chunk:
         
         return BlockPosition(x, y, z)
     
+    # TODO work on stuff
+    
+    def updateBuried(self, app, bp):
+        # get the blocks id which translates to its index in the instance list
+        id = self.coordToID(bp)
+        
+        # if the blocks instance is None, return to kill the function
+        if(self.instances[id] == None):
+            return
+        
+        gloPos = self.globalBlockPos(bp)
+    
     def setBlock(self):
         pass
+    
+    # TODO work on stuff
+    
+
+# returning the position of the block that is next to the original block
+# that is touching the face that was inputted
+def adjaBlockPos(bP, fID):
+    # get the blocks position in a list
+    x, y, z = bP
+    
+    # turns whatever fID is into half of what it was so that it's a value within
+    # the index of the list below
+    fID //= 2
+    
+    # Left, right, front, back, bottom, top
+    (a, b, c) = [(-1, 0, 0), (1, 0, 0), (0, 0, -1), (0, 0, 1), (0, -1, 0), (0, 1, 0)][fID]
+    
+    # the original coords + the face tuples translate the coords to be the coords
+    # of the block that is adjacent in the direction of the inputted face
+    x += a
+    y += b
+    z += c
+    
+    return BlockPosition(x, y, z)
