@@ -93,9 +93,7 @@ class Chunk:
         z += 16 * self.position[2]
         
         return BlockPosition(x, y, z)
-    
-    # TODO work on stuff
-    
+        
     def updateBuried(self, app, bp):
         # get the blocks id which translates to its index in the instance list
         id = self.coordToID(bp)
@@ -104,15 +102,30 @@ class Chunk:
         if(self.instances[id] == None):
             return
         
+        # get the specific block position with regards to the world.
         gloPos = self.globalBlockPos(bp)
         
+        buried = False
         for fID in range(0, 12, 2):
+            # get the coords of the adjacent block in the direction of the face
             adjPos = adjaBlockPos(gloPos, fID)
             
+            # if a block occupies the coord that's adjacent to the block we're checking
+            # set the visibleFace attribute of the specific instance to false
+            # which basically sets a blocks face to be invisible
             if coordOccupied(app, adjPos):
-                self.instances[id][0].visible
-            else:
+                self.instances[id][0].visibleFaces[fID] = False
+                self.instances[id][0].visibleFaces[fID + 1] = False
                 pass
+            # if there isn't a block adjacent to a block's face then the block's
+            # face should be visible
+            else:
+                self.instances[id][0].visibleFaces[fID] = True
+                self.instances[id][0].visibleFaces[fID + 1] = True
+                buried = True
+        
+        self.instances[id][1] = buried
+                
     
     # check if a certain coordinate is occupied by a block
     def coordOccupied(self, bp):
@@ -121,11 +134,11 @@ class Chunk:
         
         # check if it's an 'air' block. if not return True since that spot is occupied
         return self.blocks[x, y, z] != 'air'
-    
-    def setBlock(self):
+        
+    def setBlock(self): # TODO finish after writing helper functions
         pass
-    
-    # TODO work on stuff
+
+# * Helper Functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # get the chunk a certain block is in
 def getChunk(app, bp):
@@ -157,6 +170,7 @@ def coordOccupied(app, bp):
     
     return chunk.coordOccupied(innerBP)
 
+# returns the chunk's world position based off of a global block position
 def localChunk(bp):
     (x, y, z) = bp
     
@@ -182,6 +196,34 @@ def coordInBound(app, bp):
     (chunk, block) = localChunk(bp)
     
     return chunk in app.chunks
+
+# returns integer value of the closest block in a certain axis 
+# (i.e. x: 14.2345 -> 14; y: 1.235 -> 1)
+def nearestBlock(coord):
+    return round(coord)
+
+# reuturns the coordinate of the nearest block
+def nearestBP(x, y, z):
+    bX = nearestBlock(x)
+    bY = nearestBlock(y)
+    bZ = nearestBlock(z)
+    return BlockPosition(bX, bY, bZ)
+
+# returns the position of the center of a block in relation to the world
+def blockInWorld(bp):
+    (x, y, z) = bp
+    
+    return (x, y, z)
+
+def isBuried(app, bp):
+    # if any of the faces of the block isn't adjacent to anything, then block isn't buried
+    for fID in range(0, 12, 2):
+        adja = adjaBlockPos(bp, fID)
+        if not coordOccupied(app, adja):
+            return False
+    
+    # all spaces adjacent to block are taken so block is buried
+    return True
 
 # returning the position of the block that is next to the original block
 # that is touching the face that was inputted
