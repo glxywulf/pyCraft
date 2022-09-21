@@ -262,3 +262,15 @@ from perlin_noise import *
 
 # instances = [None] * (64)
 # print(instances)
+
+# blocks = np.full((3, 3, 3), 'air')
+
+# for x in range(3):
+#     for y in range(3):
+#         for z in range(3):
+#             blocks[x, y, z] = x + y + z
+            
+# print(blocks)
+
+# print(blocks[2, 2, 2])
+

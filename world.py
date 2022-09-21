@@ -93,7 +93,7 @@ class Chunk:
         z += 16 * self.position[2]
         
         return BlockPosition(x, y, z)
-        
+    
     def updateBuried(self, app, bp):
         # get the blocks id which translates to its index in the instance list
         id = self.coordToID(bp)
@@ -125,7 +125,6 @@ class Chunk:
                 buried = True
         
         self.instances[id][1] = buried
-                
     
     # check if a certain coordinate is occupied by a block
     def coordOccupied(self, bp):
@@ -134,11 +133,53 @@ class Chunk:
         
         # check if it's an 'air' block. if not return True since that spot is occupied
         return self.blocks[x, y, z] != 'air'
+    
+    # initializes the block fully, assigning the block its position, type, instances,
+    # light lvls, buried states, i think that's it.
+    def setBlock(self, app, bp, bID, doLightUpdate = True, doBuriedUpdate = True):
+        # set the block to bID since that's what type it is
+        (x, y, z) = bp
+        self.blocks[x, y, z] = bID
         
-    def setBlock(self): # TODO finish after writing helper functions
-        pass
+        # instance index based off of block position
+        id = self.coordToID(bp)
+        
+        # if the block is going to be an 'air' block then it doesn't need instances
+        if(bID == 'air'):
+            self.instances[id] = None
+        # otherwise, we set up the instances here
+        else:
+            # set its texture by using app's texture dictionary
+            texture = app.textures[bID]
+            
+            # get the models x/y/z stuffs
+            [mX, mY, mZ] = blockInWorld(self.globalBlockPos(bp))
+            
+            # set the blocks instance in self.instances as a list that contains the Instance object from
+            # render file, and a boolean which represents whether or not the block is buried
+            self.instances[id] = [render.Instance(app.cube, np.array([[mX], [mY], [mZ]]), texture), False]
+            
+            # check if we need to update whether block is buried or not
+            if(doBuriedUpdate):
+                self.updateBuried(app, bp)
+        
+        # get global block position
+        gloPos = self.globalBlockPos(bp)
+        
+        # if we need to update light and buried states on a global scale then we
+        # update the values
+        if(doBuriedUpdate):
+            updateBuriedNear(app, gloPos)
+                
+        if(doLightUpdate):
+            updateLight(app, gloPos)
 
 # * Helper Functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# accesses the class function inside chunk.
+def updateBuried(app, bp):
+    (chunk, innerPos) = getChunk(app, bp)
+    chunk.updateBuried(app, innerPos)
 
 # get the chunk a certain block is in
 def getChunk(app, bp):
@@ -170,6 +211,11 @@ def coordOccupied(app, bp):
     
     return chunk.coordOccupied(innerBP)
 
+# access the setBlock class function of chunk outside of chunk object
+def setBlock(app, bp, bID, doUpdateLight = True):
+    (chunk, innerBP) = getChunk(app, bp)
+    chunk.setBlock(app, innerBP, bID, doUpdateLight)
+    
 # returns the chunk's world position based off of a global block position
 def localChunk(bp):
     (x, y, z) = bp
@@ -215,15 +261,61 @@ def blockInWorld(bp):
     
     return (x, y, z)
 
+# returns a boolean value that represents whether or not a block is fully buried or not
 def isBuried(app, bp):
     # if any of the faces of the block isn't adjacent to anything, then block isn't buried
     for fID in range(0, 12, 2):
         adja = adjaBlockPos(bp, fID)
+        
+        # this checks if its buried
         if not coordOccupied(app, adja):
             return False
     
     # all spaces adjacent to block are taken so block is buried
     return True
+
+# TODO Code this
+
+def updateBuriedNear(app, bp): # ? Priority
+    pass
+
+def adjaChunk(cp, dist):
+    pass
+
+def unloadChunk(app, cp):
+    pass
+
+def loadChunk(app, cp):
+    pass
+
+def loadUnloadChunk(app):
+    pass
+
+def countLoadChunk(app, cp, dist):
+    pass
+
+def tickChunk(app):
+    pass
+
+def tick(app):
+    pass
+
+def setLight(app, bp, lvl):
+    pass
+
+def updateLight(app, bp): # ? Priority
+    pass
+
+def removeBlock(app,  bp):
+    pass
+
+def addBlock(app, bp):
+    pass
+
+def hasBeneath(app):
+    pass
+
+# TODO Code this
 
 # returning the position of the block that is next to the original block
 # that is touching the face that was inputted
@@ -245,3 +337,10 @@ def adjaBlockPos(bP, fID):
     z += c
     
     return BlockPosition(x, y, z)
+
+# TODO Code this
+
+def lookBlock(app):
+    pass
+
+# TODO Code this
