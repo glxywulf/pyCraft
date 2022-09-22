@@ -1,6 +1,7 @@
 from typing import NamedTuple, List, Any, Tuple, Optional
 from numpy import ndarray
 import numpy as np
+import heapq
 # import matplotlib.pyplot as plt
 from perlin_noise import *
 
@@ -274,3 +275,12 @@ from perlin_noise import *
 
 # print(blocks[2, 2, 2])
 
+# test = np.full((16,16,16), 0)
+
+# print(test.shape)
+
+# test = [3,6,2,7,2,4,8,1,-9,9,0]
+
+# heapq.heappop(test)
+
+# print(heapq.heappop(test))

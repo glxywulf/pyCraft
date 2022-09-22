@@ -276,8 +276,13 @@ def isBuried(app, bp):
 
 # TODO Code this
 
-def updateBuriedNear(app, bp): # ? Priority
-    pass
+# update block buried booleans for blocks that are next to another block if that
+# coord is in a chunk that's stored in app.chunks
+def updateBuriedNear(app, bp):
+    for fID in range(0, 12, 2):
+        adjaPos =  adjaBlockPos(bp, fID)
+        if coordInBound(app, adjaPos):
+            updateBuried(app, adjaPos)
 
 def adjaChunk(cp, dist):
     pass
@@ -303,8 +308,48 @@ def tick(app):
 def setLight(app, bp, lvl):
     pass
 
+# update light levels for blocks
 def updateLight(app, bp): # ? Priority
-    pass
+    # FIXME: Will be changed later since it bugs out a bit. Doesn't quite propogate
+    # over chunk boundaries without making it much much slower
+
+    # get the chunk that we're in and initialize the lightlvls list attribute of the chunk
+    (chunk, bp) = getChunk(app, bp)
+    chunk.lightlvls = np.full_like(chunk.blocks, 0, int)
+    
+    # get the shape of chunk.blocks
+    shape = chunk.blocks.shape
+    
+    # keep a list of updated light stuff and blocks that are queueed up to be updated
+    done = []
+    queue = []
+    
+    # put the blocks into queue in heap order
+    for x in range(shape[0]):
+        for z in range(shape[2]):
+            y = shape[1] - 1
+            heapq.heappush(queue, (-7, BlockPosition(x, y, z)))
+    
+    # while the queue still has blocks waiting in it
+    while (len(queue) > 0):
+        (light, pos) = heapq.heappop(queue)
+        light *= -1
+        
+        # if we've seen the position before then ignore it and continue with the next block
+        if(pos in done):
+            continue
+        
+        # if we haven't seen it, append it into done list
+        done.append(pos)
+        
+        # get the block postion and set the lightlvl in the same position to the light lvl
+        (x, y, z) = pos
+        chunk.lightlvls[x, y, z] = light
+        
+        for fID in range(0, 12, 2):
+            pass
+        
+        
 
 def removeBlock(app,  bp):
     pass
