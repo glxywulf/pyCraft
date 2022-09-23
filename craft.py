@@ -3,11 +3,12 @@ import numpy as np
 import math
 import render
 import world
-# from world import Chunk, ChunkPos
+from world import Chunk, ChunkPosition
 from typing import List
 import perlin_noise
 
 def appStarted(app):
+    # vertices
     vertices = [
         np.array([[-1], [-1], [-1]]) / 2,
         np.array([[-1], [-1], [1]]) / 2,
@@ -19,6 +20,7 @@ def appStarted(app):
         np.array([[1], [1], [1]]) / 2
     ]
     
+    # block textures, currently just hex code colors
     grassTexture = [
         '#FF0000', '#FF0000',
         '#A52A2A', '#A52A2A',
@@ -36,11 +38,13 @@ def appStarted(app):
         '#BBCCAA', '#BBBBBB'
     ]
     
+    # texture dictionary for efficient calling
     app.textures = {
         'grass' : grassTexture,
         'stone' : stoneTexture
     }
     
+    # tuples that contain directional values equivalent to faces
     faces = [
         # Left
         (0, 2, 1),
@@ -62,9 +66,49 @@ def appStarted(app):
         (3, 6, 7),
     ]
     
+    # terrain variation scale
     app.lowNoise = perlin_noise.PerlinNoise(octaves = 3)
     
+    # block models stuffs
     app.cube = render.Model(vertices, faces)
+    
+    # all the chunks
+    app.chunks = {
+        ChunkPosition(0, 0, 0) : Chunk(ChunkPosition(0, 0, 0))
+    }
+    
+    # generate the chunk
+    app.chunks[ChunkPosition(0, 0, 0)].generate(app)
+    
+    # player data and stuff
+    app.playerHeight = 1.5
+    app.playerWidth = 0.6
+    app.playerRadius = app.playerWidth / 2
+    app.onGround = False
+    app.playerVelocity = [0.0, 0.0, 0.0]
+    app.walkSpeed = 0.2
+    app.selectedBlock = 'air'
+    app.gravity = 0.10
+    app.renderDistSq = 6**2
+    
+    # camera stuffs
+    app.camYaw = 0
+    app.camPitch = 0
+    app.camPos = [4.0, 10.0 + app.playerHeight, 4.0]
+    
+    # vp informations # ! figure out what vp means
+    app.vpDist = 0.25
+    app.vpWidth = 3.0 / 4.0
+    app.vpHeight = app.vpWidth * app.height / app.width
+    
+    # field of view values
+    app.horiFOV = math.atan(app.vpWidth / app.vpDist)
+    app.vertFOV = math.atan(app.vpHeight / app.vpDist)
+    
+    print(f"Horizontal FOV : {app.horiFOV} ({math.degrees(app.horiFOV)}°)")
+    
+    app.timerDelay = 50
+    
 
 def redrawAll(app, canvas):
     render.redrawAll(app, canvas)

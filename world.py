@@ -8,11 +8,16 @@ from typing import NamedTuple, List, Any, Tuple, Optional
 
 # object that represents a chunk's position in terms of the world space
 class ChunkPosition(NamedTuple):
-    x, y, z = int, int, int
+    x : int
+    y : int
+    z : int
 
 # even further specification on block coords in 3d world space
 class BlockPosition(NamedTuple):
-    x, y, z = int, int, int
+    x : int
+    y : int
+    z : int
+    
 
 # what kind of block a block is
 blockID = str
@@ -305,11 +310,13 @@ def tickChunk(app):
 def tick(app):
     pass
 
+# access chunk object at specified position and set it's lightlvl to inputted lvl
 def setLight(app, bp, lvl):
-    pass
+    (chunk, (x, y, z)) = getChunk(app, bp)
+    chunk.lightlvls[x, y, z] = lvl
 
 # update light levels for blocks
-def updateLight(app, bp): # ? Priority
+def updateLight(app, bp):
     # FIXME: Will be changed later since it bugs out a bit. Doesn't quite propogate
     # over chunk boundaries without making it much much slower
 
@@ -347,18 +354,45 @@ def updateLight(app, bp): # ? Priority
         chunk.lightlvls[x, y, z] = light
         
         for fID in range(0, 12, 2):
-            pass
+            nP = adjaBlockPos(pos, fID)
+            gP = chunk.globalBlockPos(nP)
+            
+            # if the next block position is out of bounds or occupied or out of chunk
+            # just ignore it and keep its lightlvl the same
+            if(nP in done):
+                continue
+            if not coordInBound(app, gP):
+                continue
+            if coordOccupied(app, gP):
+                continue
+            if(nP[0] < 0 or nP[0] >= 16):
+                continue
+            if(nP[1] < 0 or 16 <= nP[1]):
+                continue
+            if(nP[2] < 0 or 16 <= nP[2]):
+                continue
+            
+            # if it passes all of those checks, check if light is 7 and the face
+            # that we're checking that's 7 is the top face. set lights next to it to 7
+            if(light == 7 and fID == 8):
+                nLight = 7
+            
+            # otherwise, next light lvl should be the max of light - 1 and 0
+            else:
+                nLight = max(light - 1, 0)
+            
+            # push the next light and next position into the queue
+            heapq.heappush(queue, (-nLight, nP))
         
-        
+def removeBlock(app, bp):
+    setBlock(app, bp, 'air')
 
-def removeBlock(app,  bp):
-    pass
+def addBlock(app, bp, bID):
+    setBlock(app, bp, bID)
 
-def addBlock(app, bp):
-    pass
-
+# ! FInish after setting app values
 def hasBeneath(app):
-    pass
+    xP, yP, zP = app.camPos
 
 # TODO Code this
 
