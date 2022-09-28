@@ -4,6 +4,7 @@ import numpy as np
 import heapq
 # import matplotlib.pyplot as plt
 from perlin_noise import *
+from cmu_112_graphics import *
 
 # class Thing(NamedTuple):
     
@@ -284,3 +285,28 @@ from perlin_noise import *
 # heapq.heappop(test)
 
 # print(heapq.heappop(test))
+
+def appStarted(app):
+    app.cx = app.width // 2
+    app.cy = app.height // 2
+    
+    app.timerDelay = 10
+    
+    app.dx = 5
+    app.dy = 3
+    
+def timerFired(app):
+    bounce(app)
+    app.cx += app.dx
+    app.cy += app.dy
+    
+def bounce(app):
+    if(app.cx - 50 < 0 or app.cx + 50 > app.width):
+        app.dx *= -1
+    if(app.cy - 50 < 0 or app.cy + 50 > app.height):
+        app.dy *= -1
+    
+def redrawAll(app, canvas):
+    canvas.create_rectangle(app.cx - 50, app.cy - 50, app.cx + 50, app.cy + 50, fill = 'blue', width = 0)
+
+runApp(width = 500, height = 500)

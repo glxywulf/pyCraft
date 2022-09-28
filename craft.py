@@ -4,7 +4,6 @@ import math
 import render
 import world
 from world import Chunk, ChunkPosition
-from typing import List
 import perlin_noise
 
 def appStarted(app):
@@ -96,7 +95,7 @@ def appStarted(app):
     app.camPitch = 0
     app.camPos = [4.0, 10.0 + app.playerHeight, 4.0]
     
-    # vp informations # ! figure out what vp means
+    # view point informations
     app.vpDist = 0.25
     app.vpWidth = 3.0 / 4.0
     app.vpHeight = app.vpWidth * app.height / app.width
@@ -108,6 +107,21 @@ def appStarted(app):
     print(f"Horizontal FOV : {app.horiFOV} ({math.degrees(app.horiFOV)}°)")
     
     app.timerDelay = 50
+    
+    # directional key inputs
+    app.w = False
+    app.a = False
+    app.s = False
+    app.d = False
+    
+    # mouse stuffs
+    app.prevMouseInput = None
+    
+    app.capMouse = False
+    
+    app.wireFrame = False
+    
+    
     
 
 def redrawAll(app, canvas):

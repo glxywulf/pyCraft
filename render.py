@@ -2,11 +2,10 @@ import math
 import time
 import world
 import numpy as np
-from cmu_112_graphics import *
 from math import sin, cos
 from numpy import ndarray
 from typing import List, Tuple, Optional, Any
-# from world import BlockPos, adjacentBlockPos
+from world import BlockPosition, adjaBlockPos
 
 class Model:
     def __init__(self, vertices, faces):
@@ -104,34 +103,12 @@ def transMatrix(x, y, z):
         [0, 0, 0, 1]
     ])
     
-# ! figure out what this means
+# 3d space to canvas matrix
 def spaceCanvMat(camPos, yaw, pitch, vpDist, vpWidth, vpHeight, canvWidth, canvHeight):
     vp = vpCanvMatrix(vpWidth, vpHeight, canvWidth, canvHeight)
     
     return vp @ camToVpMatrix(vpDist) @ spaceToCameraMatrix(camPos, yaw, pitch)
-    
-# ! figure out what this means
-def vpCanvMatrix(vpW, vpH, cW, cH):
-    w = cW / vpW
-    h = cH / vpH
-    
-    x = cW * .5
-    y = cH * .5
-    
-    return np.array([
-        [w, 0, x],
-        [0, h, y],
-        [0, 0, 1]
-    ])
-    
-# ! figure out what this means
-def camToVpMatrix(vpd):
-    return np.array([
-        [vpd, 0, 0, 0],
-        [0, vpd, 0, 0],
-        [0, 0, 1, 0]
-    ])
-    
+
 # converts the matrix of the point in space into a matrix that the camera understands
 # Original technique from
 # https://gamedev.stackexchange.com/questions/168542/camera-view-matrix-from-position-yaw-pitch-worldup
@@ -149,20 +126,112 @@ def spaceToCameraMatrix(cp, y, p):
         [0, 0, 0, 1]
     ])
 
+# viewpoint with respect to canvas matrix
+def vpCanvMatrix(vpW, vpH, cW, cH):
+    w = cW / vpW
+    h = cH / vpH
+    
+    x = cW * .5
+    y = cH * .5
+    
+    return np.array([
+        [w, 0, x],
+        [0, h, y],
+        [0, 0, 1]
+    ])
 
+# return a tuple of the distance from a point to the camera position
+def spaceToCamera(point, cp):
+    x = point[0] - cp[0]
+    y = point[1] - cp[1]
+    z = point[2] - cp[2]
 
+    return [x, y, z]
 
+# returns the distance of a camera to viewpoint in a matrix
+def camToVpMatrix(vpd):
+    return np.array([
+        [vpd, 0, 0, 0],
+        [0, vpd, 0, 0],
+        [0, 0, 1, 0]
+    ])
+    
+# camera to viewpoint
+def camToViewpoint(point, vpd):
+    # view point x and y calculated and divided based on z coord
+    vpX = point[0] * vpd / point[2]
+    vpY = point[1] * vpd / point[2]
 
+    return [vpX, vpY]
 
+# TODO Code stuffs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+# translate the player viewpoint from the xy point to a xy point on the canvas
+def viewPointToCanv(point, vpW, vpH, canvWidth, canvHeight):
+    canvX = (point[0] / vpW + 0.5) * canvWidth
+    canvY = (-point[1] / vpH + 0.5) * canvHeight
 
+    return [canvX, canvY]
 
+# convert a point in space into a xy coordinate in the canvas
+def spaceToCanvas(app, point):
+    row = turnToMatRow(point)
+    matrix = spaceCanvMat(app.camPos, app.camYaw, app.camPitch, app.vpDist, 
+                          app.vpWidth, app.vpHeight, app.width, app.height)
+    result = matRowToCoord(matrix @ row)
+    
+    return result
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# find the normal face with respect to the polygon being shown
+def faceNormal(v0, v1, v2):
+    coord0 = matRowToCoord(v0)
+    coord1 = matRowToCoord(v1)
+    coord2 = matRowToCoord(v2)
+    
+    a = coord1 - coord0
+    b = coord2 - coord0
+    
+    result = np.cross(a, b)
+    
+    return result
 
+# vertices have to be within the camera space
+# technique from: https://en.wikipedia.org/wiki/Back-face_culling
+def isBackFace(v0, v1, v2):
+    normal = faceNormal(v0, v1, v2)
+    
+    coord0 = matRowToCoord(v0)
+    
+    return np.dot()
+
+def isFaceVisible(app, bp, fID):
+    pass
+
+def getBlockFaceLight(app, bp, fID):
+    pass
+
+def isBlockBack(app, bp, fID):
+    pass
+
+def clip(app, vertices, face):
+    pass
+
+def cullInstance(app, camMatrix, instance, bp):
+    pass
+
+def isBlockVisible(app, bp):
+    pass
+
+def renderInstance(app, canvas):
+    pass
+
+def drawToFace(app):
+    pass
 
 def drawToCanvas(app, canvas, faces):
     pass
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # get a bunch of times 
 frameTimes = [0.0] * 10
@@ -197,3 +266,8 @@ def redrawAll(app, canvas):
 
     canvas.create_text(11, 11, text=f'Frame Time: {frameTime:.2f}ms', anchor='nw')
     canvas.create_text(10, 10, text=f'Frame Time: {frameTime:.2f}ms', anchor='nw', fill='white')
+    
+def redrawAll(app, canvas):
+    pass
+
+# TODO Code stuffs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

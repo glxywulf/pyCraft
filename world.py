@@ -8,15 +8,15 @@ from typing import NamedTuple, List, Any, Tuple, Optional
 
 # object that represents a chunk's position in terms of the world space
 class ChunkPosition(NamedTuple):
-    x : int
-    y : int
-    z : int
+    x: int
+    y: int
+    z: int
 
 # even further specification on block coords in 3d world space
 class BlockPosition(NamedTuple):
-    x : int
-    y : int
-    z : int
+    x: int
+    y: int
+    z: int
     
 
 # what kind of block a block is
@@ -389,6 +389,8 @@ def removeBlock(app, bp):
 
 def addBlock(app, bp, bID):
     setBlock(app, bp, bID)
+
+# TODO Code this
 
 # ! FInish after setting app values
 def hasBeneath(app):
