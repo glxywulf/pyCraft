@@ -5,7 +5,6 @@ import numpy as np
 from math import sin, cos
 from numpy import ndarray
 from typing import List, Tuple, Optional, Any
-# from world import BlockPos, adjaBlockPos
 
 class Model:
     def __init__(self, vertices, faces):
@@ -199,22 +198,74 @@ def faceNormal(v0, v1, v2):
 # technique from: https://en.wikipedia.org/wiki/Back-face_culling
 def isBackFace(v0, v1, v2):
     normal = faceNormal(v0, v1, v2)
-    
     coord0 = matRowToCoord(v0)
     
-    return np.dot()
+    return -np.dot(coord0, normal) >= 0
 
+# check if a certain face of a block is visible. returns a bool
 def isFaceVisible(app, bp, fID):
-    pass
-
+    (x, y, z) = world.adjaBlockPos(bp, fID)
+    
+    # if adjacent coords are occupied then face is not visible
+    if(world.coordOccupied(app, world.BlockPosition(x, y, z))):
+        return False
+    
+    return True
+    
+# get the light lvl of a blocks face
 def getBlockFaceLight(app, bp, fID):
-    pass
+    # get the light lvl of a block adjacent to the block in the direction of the face
+    position = world.adjaBlockPos(bp, fID)
+    (chunk, (x, y, z)) = world.getChunk(app, position)
+    
+    return chunk.lightlvls[x, y, z]
 
+# returns bool saying if a back face is a back face
 def isBlockBack(app, bp, fID):
-    pass
+    # get the face from face id, block global position
+    fID //= 2
+    (x, y, z) = world.blockInWorld(bp)
+    
+    # distance from camera
+    xDiff = app.camPos[0] - x
+    yDiff = app.camPos[1] - y
+    zDiff = app.camPos[2] - z
+    
+    # left
+    if(fID == 0):
+        return xDiff > -.5
+    # right
+    elif(fID == 1):
+        return xDiff < .5
+    # front
+    elif(fID == 2):
+        return zDiff > -.5
+    # back
+    elif(fID == 3):
+        return zDiff < .5
+    # bottom
+    elif(fID == 4):
+        return yDiff > -.5
+    # top
+    elif(fID == 5):
+        return yDiff < .5
+
+# FIXME: This doesn't conserve the CCW vertex ordering. See how he changes this later
 
 def clip(app, vertices, face):
-    pass
+    # lambda function that checks whether or not face vertice is out of view
+    outOfView = lambda id : vertices[id][2] < app.vpDist
+    
+    # get a numeric value holding how many faces are visible
+    numFaceVisible = (not outOfView(face[0])) + ((not outOfView(face[1])) + (not outOfView(face[2])))
+    
+    # if there are 0 visible faces then return empty list
+    if(numFaceVisible == 0):
+        return []
+    # if there are 3 visible faces
+    elif(numFaceVisible == 3):
+        pass
+    
 
 def cullInstance(app, camMatrix, instance, bp):
     pass
