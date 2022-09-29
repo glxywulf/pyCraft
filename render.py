@@ -5,7 +5,7 @@ import numpy as np
 from math import sin, cos
 from numpy import ndarray
 from typing import List, Tuple, Optional, Any
-from world import BlockPosition, adjaBlockPos
+# from world import BlockPos, adjaBlockPos
 
 class Model:
     def __init__(self, vertices, faces):
@@ -267,7 +267,4 @@ def redrawAll(app, canvas):
     canvas.create_text(11, 11, text=f'Frame Time: {frameTime:.2f}ms', anchor='nw')
     canvas.create_text(10, 10, text=f'Frame Time: {frameTime:.2f}ms', anchor='nw', fill='white')
     
-def redrawAll(app, canvas):
-    pass
-
 # TODO Code stuffs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

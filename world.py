@@ -13,7 +13,7 @@ class ChunkPosition(NamedTuple):
     z: int
 
 # even further specification on block coords in 3d world space
-class BlockPosition(NamedTuple):
+class BlockPos(NamedTuple):
     x: int
     y: int
     z: int
@@ -33,7 +33,7 @@ class Chunk:
     isVisible : bool = False
     
     # constructor, chunk should only have a positional instance variable made up of ChunkPositions
-    def __init__(self, position):
+    def __init__(self, position : BlockPos):
         self.position = position
     
     # this is going to be the bulk method that generates each block and gives them
@@ -56,7 +56,7 @@ class Chunk:
         for xID in range(0, 16):
             for yID in range(0, 8):
                 for zID in range(0, 16):
-                    self.updateBuried(app, BlockPosition(xID, yID, zID))
+                    self.updateBuried(app, BlockPos(xID, yID, zID))
         
         self.isFinalized = True
     
@@ -69,7 +69,7 @@ class Chunk:
                     wx = self.position[0] * 16 + (i // 256)
                     wy = self.position[1] * 16 + (i // 16) % 16
                     wz = self.position[2] * 16 + (i % 16)
-                    yield (BlockPosition(wx, wy, wz), instance)
+                    yield (BlockPos(wx, wy, wz), instance)
     
     # convert a block coordinate into a UID that specifically denotes a specific block
     def coordToID(self, position):
@@ -86,7 +86,7 @@ class Chunk:
         yID = (id // z) % y
         zID = id % z
         
-        return BlockPosition(xID, yID, zID)
+        return BlockPos(xID, yID, zID)
     
     # returns a block's position with respect to the entire world instead of 
     # just the current chunk
@@ -97,7 +97,7 @@ class Chunk:
         y += 16 * self.position[1]
         z += 16 * self.position[2]
         
-        return BlockPosition(x, y, z)
+        return BlockPos(x, y, z)
     
     def updateBuried(self, app, bp):
         # get the blocks id which translates to its index in the instance list
@@ -204,7 +204,7 @@ def getChunk(app, bp):
     z %= 16
     
     # return the chunk and blockPos in the chunk
-    return (chunk, BlockPosition(x, y, z))
+    return (chunk, BlockPos(x, y, z))
 
 # helper to get the variables we need for the function inside the Chunk class
 def coordOccupied(app, bp):
@@ -238,7 +238,7 @@ def localChunk(bp):
     y %= 16
     z %= 16
     
-    newBP = BlockPosition(x, y, z)
+    newBP = BlockPos(x, y, z)
     
     return (cPos, newBP)
 
@@ -258,7 +258,7 @@ def nearestBP(x, y, z):
     bX = nearestBlock(x)
     bY = nearestBlock(y)
     bZ = nearestBlock(z)
-    return BlockPosition(bX, bY, bZ)
+    return BlockPos(bX, bY, bZ)
 
 # returns the position of the center of a block in relation to the world
 def blockInWorld(bp):
@@ -335,7 +335,7 @@ def updateLight(app, bp):
     for x in range(shape[0]):
         for z in range(shape[2]):
             y = shape[1] - 1
-            heapq.heappush(queue, (-7, BlockPosition(x, y, z)))
+            heapq.heappush(queue, (-7, BlockPos(x, y, z)))
     
     # while the queue still has blocks waiting in it
     while (len(queue) > 0):
@@ -417,7 +417,7 @@ def adjaBlockPos(bP, fID):
     y += b
     z += c
     
-    return BlockPosition(x, y, z)
+    return BlockPos(x, y, z)
 
 # TODO Code this
 
