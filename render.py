@@ -264,11 +264,86 @@ def clip(app, vertices, face):
         return []
     # if there are 3 visible faces
     elif(numFaceVisible == 3):
-        pass
+        return [face]
     
+    # get the xyz coordinates of each vertice of the that is in view 
+    [v0, v1, v2] = sorted(face, key = outOfView)
+    
+    [[x0], [y0], [z0], _] = vertices[v0]
+    [[x1], [y1], [z1], _] = vertices[v1]
+    [[x2], [y2], [z2], _] = vertices[v2]
+    
+    if(numFaceVisible == 2):
+        xd = (x2 - x0) * (app.vpDist - z0) / (z2 - z0) + x0
+        yd = (y2 - y0) * (app.vpDist - z0) / (z2 - z0) + y0
 
+        xc = (x2 - x1) * (app.vpDist - z1) / (z2 - z1) + x1
+        yc = (y2 - y1) * (app.vpDist - z1) / (z2 - z1) + y1
+        
+        dID = len(vertices)
+        vertices.append(np.array([[xd], [yd], [app.vpDist], [1]]))
+        cID = len(vertices)
+        vertices.append(np.array([[xc], [yc], [app.vpDist], [1]]))
+
+        face0 = (v0, v1, dID)
+        face1 = (v0, v1, cID)
+        
+        return [face0, face1]
+    else:
+        xa = (x1 - x0) * (app.vpDist - z0) / (z1 - z0) + x0
+        ya = (y1 - y0) * (app.vpDist - z0) / (z1 - z0) + y0
+
+        xb = (x2 - x0) * (app.vpDist - z0) / (z2 - z0) + x0
+        yb = (y2 - y0) * (app.vpDist - z0) / (z2 - z0) + y0
+
+        aIdx = len(vertices)
+        vertices.append(np.array([[xa], [ya], [app.vpDist], [1.0]]))
+        bIdx = len(vertices)
+        vertices.append(np.array([[xb], [yb], [app.vpDist], [1.0]]))
+
+        clippedFace = (v0, aIdx, bIdx)
+
+        return [clippedFace]
+
+# This converts the instance's vertices to points in camera space, and then:
+# For all blocks, the following happens:
+#       - Faces pointing away from the camera are removed
+#       - Faces that are hidden 'underground' are removed
+#       - The color of each face is adjusted based on lighting
+#       - ~~A "fog" is applied~~ #! NOT IMPLEMENTED!
+# For anything else:
+#       - Normal back face culling is applied
+# 
+# Then, the faces are clipped, which may remove, modify, or split faces
+# Then a list of faces, their vertices, and their colors are returned
 def cullInstance(app, camMatrix, instance, bp):
-    pass
+    vertices = list(map(lambda v : camMatrix @ v, instance.getVertices()))
+    
+    faces = []
+    
+    skipNext = False
+    
+    # go through every block and assign each block's face with its texture stored in its instance
+    for (fID, (face, color)) in enumerate(zip(instance.model.faces, instance.texture)):
+        # if skipNext is true then we skip the block we're on and set skip to False
+        if(skipNext):
+            skipNext = False
+            continue
+        
+        if(bp is not None):
+            if not (instance.visibleFaces[fID]):
+                pass
+            
+            if(isBlockBack(app, bp, fID)):
+                pass
+            
+            if not (isFaceVisible(app, bp, fID)):
+                pass
+            #! Working here
+        else:
+            pass
+        
+        
 
 def isBlockVisible(app, bp):
     pass
