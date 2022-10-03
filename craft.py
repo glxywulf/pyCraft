@@ -121,6 +121,8 @@ def appStarted(app):
     
     app.wireFrame = False
     
+    app.csToCanvasMat = render.csToCanvMat(app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
+    
     
     
 

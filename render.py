@@ -103,7 +103,7 @@ def transMatrix(x, y, z):
     ])
     
 # 3d space to canvas matrix
-def spaceCanvMat(camPos, yaw, pitch, vpDist, vpWidth, vpHeight, canvWidth, canvHeight):
+def csToCanvMat(camPos, yaw, pitch, vpDist, vpWidth, vpHeight, canvWidth, canvHeight):
     vp = vpCanvMatrix(vpWidth, vpHeight, canvWidth, canvHeight)
     
     return vp @ camToVpMatrix(vpDist) @ spaceToCameraMatrix(camPos, yaw, pitch)
@@ -331,31 +331,123 @@ def cullInstance(app, camMatrix, instance, bp):
             continue
         
         if(bp is not None):
+            # if block has no visible faces, ignore it
             if not (instance.visibleFaces[fID]):
-                pass
+                continue
             
+            # if we see the back of a block skipNext is set to True and current block face is ignored
             if(isBlockBack(app, bp, fID)):
-                pass
+                skipNext = True
+                continue
             
+            # if currect face is not visible skipNext is true and current face is ignored
             if not (isFaceVisible(app, bp, fID)):
-                pass
-            #! Working here
+                skipNext = True
+                continue
+            
+            # if face is visible, adjust the rgb coloring of the face depending on the 
+            # lightlvl it has
+            lightlvl = getBlockFaceLight(app, bp, fID)
+            
+            r = int(color[1:3], base = 16)
+            g = int(color[3:5], base = 16)
+            b = int(color[5:7], base = 16)
+            
+            brightness = (lightlvl + 1) / 8
+            
+            r *= brightness
+            g *= brightness
+            b *= brightness
+            
+            r = max(0, min(255, r))
+            g = max(0, min(255, g))
+            b = max(0, min(255, b))
+            
+            # set new color hexcode
+            color = '#{:02X}{:02X}{:02X}'.format(int(r), int(g), int(b))
+        
+        # if there is no block in the position we're checking and we get to the back
+        # face then just skip the block
         else:
-            pass
-        
-        
+            back = isBackFace(vertices[face[0]], vertices[face[1]], vertices[face[2]])
+            
+            if(back):
+                continue
+            
+        for clipped in clip(app, vertices, face):
+            faces.append([vertices, clipped, color])
+            
+    return faces
 
 def isBlockVisible(app, bp):
-    pass
+    pitch = app.camPitch
+    yaw = app.camYaw
+    
+    lookX = cos(pitch) * sin(-yaw)
+    lookY = sin(pitch)
+    lookZ = cos(pitch) * cos(-yaw)
+    
+    # get camPos and blockPos in respect to world
+    [camX, camY, camZ] = app.camPos
+    [blockX, blockY, blockZ] = world.blockInWorld(bp)
+    
+    # This is only a conservative estimate, so we move the camera "back"
+    # to make sure we don't miss blocks behind us
+    camX -= lookX
+    camY -= lookY
+    camZ -= lookZ
+    
+    dot = lookX * (blockX - camX) + lookY * (blockY - camY) + lookZ * (blockZ - camZ)
+    
+    return dot >= 0
 
+# render instance function
 def renderInstance(app, canvas):
-    pass
+    faces = drawToFace(app)
+    zCoord = lambda d : -(d[0][d[1][0]][2] + d[0][d[1][1]][2] + d[0][d[1][2]][2])
+    
+    faces.sort(key = zCoord)
+    
+    drawToCanvas(app, canvas, faces)
 
+# get the faces that need to be drawn and are within the render distance set in app
 def drawToFace(app):
-    pass
+    camMatrix = spaceToCameraMatrix(app.camPos, app.camYaw, app.camPitch)
+    faces = []
+    
+    for chunkPos in app.chunks:
+        chunk = app.chunks[chunkPos]
+        
+        if(chunk.isVisible and chunk.isFinalized):
+            for (i, instance) in enumerate(chunk.instances):
+                if(instance is not None):
+                    (instance, unburied) = instance
+                    
+                    if unburied:
+                        wx = chunk.pos[0] * 16 + (i // 256)
+                        wy = chunk.pos[1] * 16 + (i // 16) % 16
+                        wz = chunk.pos[2] * 16 + (i % 16)
+                        bp = world.BlockPosition(wx, wy, wz)
+                        
+                        if(isBlockVisible(app, bp)):
+                            (x, y, z) = bp
+                            x -= app.cameraPos[0]
+                            y -= app.cameraPos[1]
+                            z -= app.cameraPos[2]
+                            
+                            if(x ** 2 + y ** 2 + z**2 <= app.renderDistSq):
+                                faces += cullInstance(app, camMatrix, instance, bp)
+                                
+    return faces
 
+#! working here
 def drawToCanvas(app, canvas, faces):
-    pass
+    matrix = app.csToCanvasMat
+    
+    for i in range(len(faces)):
+        if(type(faces[i][0]) != type((0, 0))):
+            vert = list(map(lambda v : matRowToCoord(matrix @ v), faces[i][0]))
+            faces[i][0] = (vert, True)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
