@@ -290,7 +290,7 @@ def appStarted(app):
     app.cx = app.width // 2
     app.cy = app.height // 2
     
-    app.timerDelay = 10
+    app.timerDelay = 1
     
     app.dx = 5
     app.dy = 3
@@ -307,6 +307,7 @@ def bounce(app):
         app.dy *= -1
     
 def redrawAll(app, canvas):
+    canvas.create_rectangle(0,0,app.width,app.height,fill='black')
     canvas.create_rectangle(app.cx - 50, app.cy - 50, app.cx + 50, app.cy + 50, fill = 'blue', width = 0)
 
 runApp(width = 500, height = 500)

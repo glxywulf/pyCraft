@@ -119,9 +119,10 @@ def appStarted(app):
     
     app.capMouse = False
     
+    # block stuffs
     app.wireFrame = False
     
-    app.csToCanvasMat = render.csToCanvMat(app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
+    app.csToCanvMat = render.csToCanvasMat(app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
     
     
     

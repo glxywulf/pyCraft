@@ -103,10 +103,14 @@ def transMatrix(x, y, z):
     ])
     
 # 3d space to canvas matrix
-def csToCanvMat(camPos, yaw, pitch, vpDist, vpWidth, vpHeight, canvWidth, canvHeight):
+def spaceToCanvasMatrix(camPos, yaw, pitch, vpDist, vpWidth, vpHeight, canvWidth, canvHeight):
     vp = vpCanvMatrix(vpWidth, vpHeight, canvWidth, canvHeight)
     
     return vp @ camToVpMatrix(vpDist) @ spaceToCameraMatrix(camPos, yaw, pitch)
+
+def csToCanvasMat(vpDist, vpWidth, vpHeight, canvWidth, canvHeight):
+    vpToCanv = vpCanvMatrix(vpWidth, vpHeight, canvWidth, canvHeight)
+    return vpToCanv @ camToVpMatrix(vpDist)
 
 # converts the matrix of the point in space into a matrix that the camera understands
 # Original technique from
@@ -163,8 +167,6 @@ def camToViewpoint(point, vpd):
 
     return [vpX, vpY]
 
-# TODO Code stuffs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 # translate the player viewpoint from the xy point to a xy point on the canvas
 def viewPointToCanv(point, vpW, vpH, canvWidth, canvHeight):
     canvX = (point[0] / vpW + 0.5) * canvWidth
@@ -175,7 +177,7 @@ def viewPointToCanv(point, vpW, vpH, canvWidth, canvHeight):
 # convert a point in space into a xy coordinate in the canvas
 def spaceToCanvas(app, point):
     row = turnToMatRow(point)
-    matrix = spaceCanvMat(app.camPos, app.camYaw, app.camPitch, app.vpDist, 
+    matrix = spaceToCanvasMatrix(app.camPos, app.camYaw, app.camPitch, app.vpDist, 
                           app.vpWidth, app.vpHeight, app.width, app.height)
     result = matRowToCoord(matrix @ row)
     
@@ -442,12 +444,28 @@ def drawToFace(app):
 
 #! working here
 def drawToCanvas(app, canvas, faces):
-    matrix = app.csToCanvasMat
+    matrix = app.csToCanvMat
     
     for i in range(len(faces)):
         if(type(faces[i][0]) != type((0, 0))):
             vert = list(map(lambda v : matRowToCoord(matrix @ v), faces[i][0]))
             faces[i][0] = (vert, True)
+            
+        ((vertices, _), face, color) = faces[i]
+        
+        v0 = vertices[face[0]]
+        v1 = vertices[face[1]]
+        v2 = vertices[face[2]]
+        
+        # if wireFrame is true, draw the edges of a block face onto canvas
+        if app.wireFrame:
+            edges = [(v0, v1), (v0, v2), (v1, v2)]
+            
+            for (v0, v1) in edges:
+                canvas.create_line(v0[0], v0[1], v1[0], v1[1], fill = color)
+                
+        else:
+            canvas.create_polygon(v0[0], v0[1], v1[0], v1[1], v2[0], v2[1], fill = color)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -461,6 +479,22 @@ def redrawAll(app, canvas):
     
     # creates the sky
     canvas.create_rectangle(0.0, 0.0, app.width, app.height, fill = '#0080FF')
+    
+    # call the renderInstance function
+    renderInstance(app, canvas)
+    
+    # set important values and position stuffs
+    origin = spaceToCanvas(app, np.array([[0], [0], [0]]))
+    xAxis = spaceToCanvas(app, np.array([[1], [0], [0]]))
+    yAxis = spaceToCanvas(app, np.array([[0], [1], [0]]))
+    zAxis = spaceToCanvas(app, np.array([[0], [0], [1]]))
+    
+    xpoint = spaceToCameraMatrix(app.camPos, app.camYaw, app.camPitch) @ turnToMatRow(np.array([[1], [0], [0]]))
+    xpoint = matRowToCoord(xpoint)
+
+    canvas.create_line(origin[0], origin[1], xAxis[0], xAxis[1], fill='red')
+    canvas.create_line(origin[0], origin[1], yAxis[0], yAxis[1], fill='green')
+    canvas.create_line(origin[0], origin[1], zAxis[0], zAxis[1], fill='blue')
     
     # cursor
     canvas.create_oval(app.width / 2 - 1, app.height / 2 - 1, app.width / 2 + 1, app.height / 2 + 1)
