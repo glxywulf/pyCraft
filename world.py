@@ -47,6 +47,7 @@ class Chunk:
                 for y in range(0, 8):
                     self.lightlvls[x, y, z] = 0
                     bID = 'grass' if (y == 7) else 'stone'
+                    self.setBlock(app, BlockPosition(x, y, z), bID, doUpdateLight = False, doUpdateBuried = False)
     
     # set the visible faces of every single block in every chunk and finalize block face states
     def lightOpt(self, app):
@@ -288,26 +289,104 @@ def updateBuriedNear(app, bp):
         if coordInBound(app, adjaPos):
             updateBuried(app, adjaPos)
 
+# will return a generator object full of every chunk adjacent to inputted chunkPos
 def adjaChunk(cp, dist):
-    pass
+    for xOffset in range(-dist, dist + 1):
+        for zOffset in range(-dist, dist + 1):
+            if(xOffset == zOffset):
+                continue
+            
+            (x, y, z) = cp
+            
+            x += xOffset
+            z += zOffset
+            
+            newChunkPos = ChunkPosition(x, y, z)
+            
+            yield newChunkPos
 
+# unload specified chunk at position cp by removing it from app.chunks
+# helper function to unload chunks
 def unloadChunk(app, cp):
-    pass
+    print(f"Unloading chunk at {cp}")
+    app.chunks.pop(cp)
 
+# load chunk by adding new chunk into app.chunks
+# helper function to load chunks
 def loadChunk(app, cp):
-    pass
+    print(f"Loading chunk at {cp}")
+    app.chunks[cp] = Chunk(cp)
+    app.chunks[cp].generate(app)
 
+# mass load and unload all chunks
 def loadUnloadChunk(app):
-    pass
+    (cp, _) = localChunk(nearestBP(app.camPos[0], app.camPos[1], app.camPos[2]))
+    (x, _, z) = cp
+    
+    shouldUnload = []
+    
+    # get and put chunks that need to be unloaded into shouldUnload list
+    for unloadCP in app.chunks:
+        (ux, _, uz) = unloadCP
+        dist = max(abs(ux - x), abs(uz - z))
+        
+        # unload chunk
+        if(dist > 2):
+            shouldUnload.append(unloadCP)
+    
+    # once done getting chunks to unload, unload them all
+    for unloadCP in shouldUnload:
+        unloadChunk(app, unloadCP)
+        
+    loadedChunks = 0
+    
+    for loadCP in adjaChunk(cp, 2):
+        if(loadCP not in app.chunks):
+            (ux, _, uz) = unloadCP
+            dist = max(abs(ux - x), abs(uz - z))
+            
+            urgent = dist < 1
+            
+            if urgent or (loadedChunks < 1):
+                loadedChunks += 1
+                loadChunk(app, loadCP)
 
-def countLoadChunk(app, cp, dist):
-    pass
+# return the number of loaded adjacent chunks
+def countLoadedAdjaChunk(app, cp, dist):
+    count = 0
+    
+    for pos in adjaChunk(cp, dist):
+        if(pos in app.chunks):
+            count += 1
+            
+    return count
 
+# light and optimize chunk if chunk is finalized and its next to 8 chunks
 def tickChunk(app):
-    pass
+    for cp in app.chunks:
+        chunk = app.chunks[cp]
+        adjaChunks = countLoadedAdjaChunk(app, cp, 1)
+        
+        if not (chunk.isFinalized and adjaChunks == 8):
+            chunk.lightOpt(app)
+            
+        chunk.isVisible = (adjaChunks == 8)
+        chunk.isTicking = (adjaChunks == 8)
 
+# Ticking is done in stages so that collision detection works as expected:
+# First we update the player's Y position and resolve Y collisions,
+# then we update the player's X position and resolve X collisions,
+# and finally update the player's Z position and resolve Z collisions.
 def tick(app):
-    pass
+    loadUnloadChunk(app)
+    
+    tickChunk(app)
+    
+    app.camPos += app.playerVelocity
+    
+    if(app.onGround):
+        pass
+    #! Working here
 
 # access chunk object at specified position and set it's lightlvl to inputted lvl
 def setLight(app, bp, lvl):
@@ -383,19 +462,27 @@ def updateLight(app, bp):
             # push the next light and next position into the queue
             heapq.heappush(queue, (-nLight, nP))
         
+# remove blocks from the world and replace with 'air' block
 def removeBlock(app, bp):
     setBlock(app, bp, 'air')
 
+# set block function that'll place blocks
 def addBlock(app, bp, bID):
     setBlock(app, bp, bID)
 
-# TODO Code this
-
-# ! FInish after setting app values
+# check if player has block beneath them or not. returns boolean
 def hasBeneath(app):
     xP, yP, zP = app.camPos
-
-# TODO Code this
+    yP -= app.playerHeight
+    yP -= .1
+    
+    for x in [xP - app.playerRadius * 0.99, xP + app.playerRadius * 0.99]:
+        for z in [zP - app.playerRadius * 0.99, zP + app.playerRadius * 0.99]:
+            feetPos = nearestBP(x, yP, z)
+            if(coordOccupied(app, feetPos)):
+                return True
+            
+    return False
 
 # returning the position of the block that is next to the original block
 # that is touching the face that was inputted
@@ -418,9 +505,57 @@ def adjaBlockPos(bP, fID):
     
     return BlockPosition(x, y, z)
 
-# TODO Code this
-
+# * needs to be optimized later too
+# returns a tuple containing the block position of a block we're looking at
+# and which face we're looking at
 def lookBlock(app):
-    pass
+    lookX = cos(app.camPitch) * sin(-app.camYaw)
+    lookY = sin(app.camPitch)
+    lookZ = cos(app.camPitch) * cos(-app.camYaw)
+    
+    # magnification thing
+    mag = math.sqrt(lookX ** 2 + lookY ** 2 + lookZ ** 2)
+    lookX /= mag
+    lookY /= mag
+    lookZ /= mag
+    
+    step = .1
+    lookX *= step
+    lookY *= step
+    lookZ *= step
+    
+    [x, y, z] = app.camPos
+    
+    maxDist = .6
+    
+    bp = None
+    
+    for _ in range(int(maxDist / step)):
+        x += lookX
+        y += lookY
+        z += lookZ
+        
+        tempBP = nearestBP(x, y, z)
+        
+        if(coordOccupied(app, tempBP)):
+            bp = tempBP
+            break
+        
+    if(bp is None):
+        return None
+    
+    [cx, cy, cz] = bp
+    
+    x -= cx
+    y -= cy
+    z -= cz
+    
+    if(abs(x) > abs(y) and abs(x) > abs(z)):
+        face = 'right' if x > 0.0 else 'left'
+    elif(abs(y) > abs(x) and abs(y) > abs(z)):
+        face = 'top' if y > 0.0 else 'bottom'
+    else:
+        face = 'front' if z > 0.0 else 'back'
 
-# TODO Code this
+    return (bp, face)
+    

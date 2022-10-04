@@ -122,10 +122,14 @@ def appStarted(app):
     # block stuffs
     app.wireFrame = False
     
+    # canvas to matrix thing
     app.csToCanvMat = render.csToCanvasMat(app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
     
-    
-    
+def sizeChanged(app):
+    app.csToCanvMat = render.csToCanvasMat(app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
+
+def mousePressed(app, event):
+    block = world.lookBlock(app)
 
 def redrawAll(app, canvas):
     render.redrawAll(app, canvas)
