@@ -115,7 +115,7 @@ def appStarted(app):
     app.d = False
     
     # mouse stuffs
-    app.prevMouseInput = None
+    app.prevMouse = None
     
     app.capMouse = False
     
@@ -124,12 +124,104 @@ def appStarted(app):
     
     # canvas to matrix thing
     app.csToCanvMat = render.csToCanvasMat(app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
-    
+
+# if window size changes then we need to re-initialize the size of things in the app again
 def sizeChanged(app):
     app.csToCanvMat = render.csToCanvasMat(app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
 
+# define a couple things that happen when a mouse is pressed
+#? Haven't added the check statements which check for a specific mouse press yet but the idea still there
 def mousePressed(app, event):
     block = world.lookBlock(app)
+    
+    if block is not None:
+        (position, face) = block
+        
+        if(app.selectedBlock == 'air'):
+            world.removeBlock(app, position)
+        else:
+            [x, y, z] = position
+            
+            if(face == 'left'):
+                x -= 1
+            elif(face == 'right'):
+                x += 1
+            elif(face == 'bottom'):
+                y -= 1
+            elif(face == 'top'):
+                y += 1
+            elif(face == 'back'):
+                z -= 1
+            elif(face == 'front'):
+                z += 1
+            
+            world.addBlock(app, world.BlockPosition(x, y, z), app.selectedBlock)
+
+# def what happens when we move the mouse across the screen.
+def mouseMoved(app, event):
+    if not app.capMouse:
+        app.prevMouse = None
+    
+    if app.prevMouse is not None:
+        xChange = -(event.x - app.prevMouse[0])
+        yChange = -(event.y - app.prevMouse[1])
+        
+        app.camPitch += (yChange * .01)
+        
+        if(app.camPitch < (-math.pi / 2 * .95)):
+            app.camPitch = (-math.pi / 2 * .95)
+        elif(app.camPitch > (math.pi / 2 * .95)):
+            app.camPitch > (math.pi / 2 * .95)
+            
+        app.camYaw += (xChange * .01)
+        
+    if app.capMouse:
+        x = app.width / 2
+        y = app.height / 2
+        app._theRoot.event_generate('<Motion>',  warp = True, x = x, y = y)
+        app.prevMouse = (x, y)
+
+# define what happens when certain keys are released
+def keyReleased(app, event):
+    if(event.key == 'w'):
+        app.w = False
+    elif(event.key == 's'):
+        app.s = False
+    elif(event.key == 'a'):
+        app.a = False
+    elif(event.key == 'd'):
+        app.d = False
+
+# essentially the update function will call every app.timerDelay milliseconds
+def timerFired(app):
+    world.tick(app)
+
+# define what happens when keys are pressed
+def keyPressed(app, event):
+    if(event.key == '1'):
+        app.selectedBlock = 'air'
+    elif(event.key == '2'):
+        app.selectedBlock = 'grass'
+    elif(event.key == '3'):
+        app.selectedBlock = 'stone'
+    elif(event.key == 'w'):
+        app.w = True
+    elif(event.key == 's'):
+        app.s = True
+    elif(event.key == 'a'):
+        app.a = True
+    elif(event.key == 'd'):
+        app.d = True
+    elif(event.key == 'Space' and app.playerOnGround):
+        app.playerVelocity[1] = .35
+    elif(event.key == 'Escape'):
+        app.capMouse = not app.capMouse
+        
+        if app.capMouse:
+            app._theRoot.config(cursor = "none")
+        else:
+            app._theRoot.config(cursor = "")
+
 
 def redrawAll(app, canvas):
     render.redrawAll(app, canvas)

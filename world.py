@@ -141,7 +141,7 @@ class Chunk:
     
     # initializes the block fully, assigning the block its position, type, instances,
     # light lvls, buried states, i think that's it.
-    def setBlock(self, app, bp, bID, doLightUpdate = True, doBuriedUpdate = True):
+    def setBlock(self, app, bp, bID, doUpdateLight = True, doUpdateBuried = True):
         # set the block to bID since that's what type it is
         (x, y, z) = bp
         self.blocks[x, y, z] = bID
@@ -165,7 +165,7 @@ class Chunk:
             self.instances[id] = [render.Instance(app.cube, np.array([[mX], [mY], [mZ]]), texture), False]
             
             # check if we need to update whether block is buried or not
-            if(doBuriedUpdate):
+            if(doUpdateBuried):
                 self.updateBuried(app, bp)
         
         # get global block position
@@ -173,10 +173,10 @@ class Chunk:
         
         # if we need to update light and buried states on a global scale then we
         # update the values
-        if(doBuriedUpdate):
+        if(doUpdateBuried):
             updateBuriedNear(app, gloPos)
                 
-        if(doLightUpdate):
+        if(doUpdateLight):
             updateLight(app, gloPos)
 
 # * Helper Functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
