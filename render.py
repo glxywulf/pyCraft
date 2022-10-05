@@ -381,6 +381,7 @@ def cullInstance(app, camMatrix, instance, bp):
             
     return faces
 
+# return bool of if a block is visible or not
 def isBlockVisible(app, bp):
     pitch = app.camPitch
     yaw = app.camYaw
@@ -442,7 +443,7 @@ def drawToFace(app):
                                 
     return faces
 
-#! working here
+# draw everything to the app canvas
 def drawToCanvas(app, canvas, faces):
     matrix = app.csToCanvMat
     
@@ -519,4 +520,3 @@ def redrawAll(app, canvas):
     canvas.create_text(11, 11, text=f'Frame Time: {frameTime:.2f}ms', anchor='nw')
     canvas.create_text(10, 10, text=f'Frame Time: {frameTime:.2f}ms', anchor='nw', fill='white')
     
-# TODO Code stuffs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

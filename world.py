@@ -384,9 +384,86 @@ def tick(app):
     
     app.camPos += app.playerVelocity
     
-    if(app.onGround):
-        pass
-    #! Working here
+    if(app.playerOnGround):
+        if not(hasBeneath(app)):
+            app.playerOnGround = False
+        else:
+            app.playerVelocity[1] = -app.gravity
+            [_, yP, _] = app.camPos
+            
+            yP -= app.playerHeight
+            yP -= .1
+            feetPos = round(yP)
+            
+            if(hasBeneath(app)):
+                app.playerOnGround = True
+                app.playerVelocity[1] = 0
+                app.camPos[1] = (feetPos + .5) + app.playerHeight
+    
+    # W makes the player go forward, S makes them go backwards,
+    # and pressing both makes them stop!
+    z = float(app.w) - float(app.s)
+    # Likewise for side to side movement
+    x = float(app.d) - float(app.a)
+    
+    if(x != 0 or z != 0):
+        mag = math.sqrt(x * x + z * z)
+        x /= mag
+        z /= mag
+        
+        newX = math.cos(app.camYaw) * x - math.sin(app.camYaw) * z
+        newZ = math.sin(app.camYaw) * x + math.cos(app.camYaw) * z
+        
+        x, z = newX, newZ
+        
+        x *= app.playerWalkSpeed
+        z *= app.playerWalkSpeed
+        
+    xVel = x
+    zVel = z
+    
+    minY = round((app.camPos[1] - app.playerHeight + 0.1))
+    maxY = round((app.camPos[1]))
+    
+    # check for x axis collisions and respond appropriately
+    app.camPos[0] += xVel
+    
+    for y in range(minY, maxY):
+        for z in [app.camPos[2] - app.playerRadius * 0.99, app.camPos[2] + app.playerRadius * 0.99]:
+            x = app.camPos[0]
+            
+            hiXCoord = round((x + app.playerRadius))
+            loXCoord = round((x - app.playerRadius))
+            
+            # if collision on right, move player back left
+            if(coordOccupied(app, BlockPosition(hiXCoord, y, round(z)))):
+                xEdge = (hiXCoord - .5)
+                app.camPos[0] = xEdge - app.playerRadius
+            
+            # if collision on left, move player back right
+            elif(coordOccupied(app, BlockPosition(loXCoord, y, round(z)))):
+                xEdge = (loXCoord + .5)
+                app.camPos[0] = xEdge + app.playerRadius
+    
+    # now we're gonna do the same thing, except for the z axis stuffs
+    app.camPos[2] += zVel
+    
+    for y in range(minY, maxY):
+        for z in [app.camPos[2] - app.playerRadius * 0.99, app.camPos[2] + app.playerRadius * 0.99]:
+            Z = app.camPos[0]
+            
+            hiZCoord = round((Z + app.playerRadius))
+            loZCoord = round((Z - app.playerRadius))
+            
+            # if collision on behind, move player back forward
+            if(coordOccupied(app, BlockPosition(hiZCoord, y, round(z)))):
+                ZEdge = (hiZCoord - .5)
+                app.camPos[0] = ZEdge - app.playerRadius
+            
+            # if collision on front, move player back backword
+            elif(coordOccupied(app, BlockPosition(loZCoord, y, round(z)))):
+                ZEdge = (loZCoord + .5)
+                app.camPos[0] = ZEdge + app.playerRadius
 
 # access chunk object at specified position and set it's lightlvl to inputted lvl
 def setLight(app, bp, lvl):

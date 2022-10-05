@@ -83,9 +83,9 @@ def appStarted(app):
     app.playerHeight = 1.5
     app.playerWidth = 0.6
     app.playerRadius = app.playerWidth / 2
-    app.onGround = False
+    app.playerOnGround = False
     app.playerVelocity = [0.0, 0.0, 0.0]
-    app.walkSpeed = 0.2
+    app.playerWalkSpeed = 0.2
     app.selectedBlock = 'air'
     app.gravity = 0.10
     app.renderDistSq = 6**2
