@@ -57,7 +57,6 @@ class Chunk:
             for yID in range(0, 8):
                 for zID in range(0, 16):
                     self.updateBuried(app, BlockPosition(xID, yID, zID))
-        
         self.isFinalized = True
     
     # make an interable generator object that contains all of the Blocks(specified
