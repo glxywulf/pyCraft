@@ -382,7 +382,7 @@ def tick(app):
     
     tickChunk(app)
     
-    app.camPos += app.playerVelocity
+    app.camPos[1] += app.playerVelocity[1]
     
     if(app.playerOnGround):
         if not(hasBeneath(app)):

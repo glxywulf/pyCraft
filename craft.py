@@ -222,8 +222,11 @@ def keyPressed(app, event):
         else:
             app._theRoot.config(cursor = "")
 
-
 def redrawAll(app, canvas):
     render.redrawAll(app, canvas)
     
-runApp(width = 1000, height = 1000, mvcCheck = False)
+def main():
+    runApp(width = 600, height = 400, mvcCheck = False)
+    
+if (__name__ == '__main__'):
+    main()

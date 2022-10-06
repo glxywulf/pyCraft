@@ -175,7 +175,7 @@ def viewPointToCanv(point, vpW, vpH, canvWidth, canvHeight):
     return [canvX, canvY]
 
 # convert a point in space into a xy coordinate in the canvas
-def spaceToCanvas(app, point):
+def wsToCanvasMat(app, point):
     row = turnToMatRow(point)
     matrix = spaceToCanvasMatrix(app.camPos, app.camYaw, app.camPitch, app.vpDist, 
                           app.vpWidth, app.vpHeight, app.width, app.height)
@@ -485,10 +485,10 @@ def redrawAll(app, canvas):
     renderInstance(app, canvas)
     
     # set important values and position stuffs
-    origin = spaceToCanvas(app, np.array([[0], [0], [0]]))
-    xAxis = spaceToCanvas(app, np.array([[1], [0], [0]]))
-    yAxis = spaceToCanvas(app, np.array([[0], [1], [0]]))
-    zAxis = spaceToCanvas(app, np.array([[0], [0], [1]]))
+    origin = wsToCanvasMat(app, np.array([[0], [0], [0]]))
+    xAxis = wsToCanvasMat(app, np.array([[1], [0], [0]]))
+    yAxis = wsToCanvasMat(app, np.array([[0], [1], [0]]))
+    zAxis = wsToCanvasMat(app, np.array([[0], [0], [1]]))
     
     xpoint = spaceToCameraMatrix(app.camPos, app.camYaw, app.camPitch) @ turnToMatRow(np.array([[1], [0], [0]]))
     xpoint = matRowToCoord(xpoint)
