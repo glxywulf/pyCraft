@@ -185,12 +185,12 @@ def wsToCanvasMat(app, point):
 
 # find the normal face with respect to the polygon being shown
 def faceNormal(v0, v1, v2):
-    coord0 = matRowToCoord(v0)
-    coord1 = matRowToCoord(v1)
-    coord2 = matRowToCoord(v2)
+    v0 = matRowToCoord(v0)
+    v1 = matRowToCoord(v1)
+    v2 = matRowToCoord(v2)
     
-    a = coord1 - coord0
-    b = coord2 - coord0
+    a = v1 - v0
+    b = v2 - v0
     
     result = np.cross(a, b)
     
@@ -200,9 +200,9 @@ def faceNormal(v0, v1, v2):
 # technique from: https://en.wikipedia.org/wiki/Back-face_culling
 def isBackFace(v0, v1, v2):
     normal = faceNormal(v0, v1, v2)
-    coord0 = matRowToCoord(v0)
+    v0 = matRowToCoord(v0)
     
-    return -np.dot(coord0, normal) >= 0
+    return -np.dot(v0, normal) >= 0
 
 # check if a certain face of a block is visible. returns a bool
 def isFaceVisible(app, bp, fID):
@@ -371,9 +371,12 @@ def cullInstance(app, camMatrix, instance, bp):
         # if there is no block in the position we're checking and we get to the back
         # face then just skip the block
         else:
-            back = isBackFace(vertices[face[0]], vertices[face[1]], vertices[face[2]])
-            
-            if(back):
+            back = isBackFace(
+                vertices[face[0]], 
+                vertices[face[1]], 
+                vertices[face[2]]
+            )
+            if back:
                 continue
             
         for clipped in clip(app, vertices, face):
@@ -407,6 +410,7 @@ def isBlockVisible(app, bp):
 # render instance function
 def renderInstance(app, canvas):
     faces = drawToFace(app)
+    
     zCoord = lambda d : -(d[0][d[1][0]][2] + d[0][d[1][1]][2] + d[0][d[1][2]][2])
     
     faces.sort(key = zCoord)
@@ -493,12 +497,19 @@ def redrawAll(app, canvas):
     xpoint = spaceToCameraMatrix(app.camPos, app.camYaw, app.camPitch) @ turnToMatRow(np.array([[1], [0], [0]]))
     xpoint = matRowToCoord(xpoint)
 
-    canvas.create_line(origin[0], origin[1], xAxis[0], xAxis[1], fill='red')
-    canvas.create_line(origin[0], origin[1], yAxis[0], yAxis[1], fill='green')
-    canvas.create_line(origin[0], origin[1], zAxis[0], zAxis[1], fill='blue')
+    canvas.create_line(origin[0], origin[1], xAxis[0], xAxis[1], fill = 'red')
+    canvas.create_line(origin[0], origin[1], yAxis[0], yAxis[1], fill = 'green')
+    canvas.create_line(origin[0], origin[1], zAxis[0], zAxis[1], fill = 'blue')
     
     # cursor
     canvas.create_oval(app.width / 2 - 1, app.height / 2 - 1, app.width / 2 + 1, app.height / 2 + 1)
+    
+    # tick time display
+    tickTime = sum(app.tickTimes) / len(app.tickTimes) * 1000.0
+
+    # This makes it more easily legible on both dark and light backgrounds
+    canvas.create_text(11, 21, text=f'Tick Time: {tickTime:.2f}ms', anchor='nw')
+    canvas.create_text(10, 20, text=f'Tick Time: {tickTime:.2f}ms', anchor='nw', fill='white')
     
     # access the variables global in this file
     global frameTimes

@@ -108,6 +108,9 @@ def appStarted(app):
     
     app.timerDelay = 50
     
+    app.tickTimes = [0.0] * 10
+    app.tickTimeId = 0
+    
     # directional key inputs
     app.w = False
     app.a = False
@@ -115,6 +118,8 @@ def appStarted(app):
     app.d = False
     
     # mouse stuffs
+    app.mouseMovedDelay = 10
+    
     app.prevMouse = None
     
     app.capMouse = False

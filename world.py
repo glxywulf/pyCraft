@@ -23,6 +23,7 @@ blockID = str
 
 # chunk object
 class Chunk:
+    pos : ChunkPosition
     blocks = ndarray
     lightlvls = ndarray
     instances : list[Any]
@@ -32,7 +33,7 @@ class Chunk:
     isVisible : bool = False
     
     # constructor, chunk should only have a positional instance variable made up of ChunkPositions
-    def __init__(self, position : BlockPosition):
+    def __init__(self, position : ChunkPosition):
         self.position = position
     
     # this is going to be the bulk method that generates each block and gives them
@@ -52,7 +53,6 @@ class Chunk:
     # set the visible faces of every single block in every chunk and finalize block face states
     def lightOpt(self, app):
         print(f"Lighting and optimizing chunk at {self.position}")
-        
         for xID in range(0, 16):
             for yID in range(0, 8):
                 for zID in range(0, 16):
@@ -72,10 +72,9 @@ class Chunk:
     
     # convert a block coordinate into a UID that specifically denotes a specific block
     def coordToID(self, position):
+        (xw, yw, zw) = self.blocks.shape
         (x, y, z) = position
-        (xB, yB, zB) = self.blocks.shape
-        
-        return x * yB * zB + y * zB + z
+        return x * yw * zw + y * zw + z
     
     # takes in a block id and converts it back to its coordinate position
     def coordFromID(self, id):
@@ -89,7 +88,7 @@ class Chunk:
     
     # returns a block's position with respect to the entire world instead of 
     # just the current chunk
-    def globalBlockPos(self, blockPos):
+    def _globalBlockPos(self, blockPos):
         (x, y, z) = blockPos
         
         x += 16 * self.position[0]
@@ -103,11 +102,11 @@ class Chunk:
         id = self.coordToID(bp)
         
         # if the blocks instance is None, return to kill the function
-        if(self.instances[id] == None):
+        if(self.instances[id] is None):
             return
         
         # get the specific block position with regards to the world.
-        gloPos = self.globalBlockPos(bp)
+        gloPos = self._globalBlockPos(bp)
         
         buried = False
         for fID in range(0, 12, 2):
@@ -157,7 +156,7 @@ class Chunk:
             texture = app.textures[bID]
             
             # get the models x/y/z stuffs
-            [mX, mY, mZ] = blockInWorld(self.globalBlockPos(bp))
+            [mX, mY, mZ] = blockInWorld(self._globalBlockPos(bp))
             
             # set the blocks instance in self.instances as a list that contains the Instance object from
             # render file, and a boolean which represents whether or not the block is buried
@@ -168,7 +167,7 @@ class Chunk:
                 self.updateBuried(app, bp)
         
         # get global block position
-        gloPos = self.globalBlockPos(bp)
+        gloPos = self._globalBlockPos(bp)
         
         # if we need to update light and buried states on a global scale then we
         # update the values
@@ -243,7 +242,7 @@ def localChunk(bp):
 
 # figure out if the coords of the block are within the chunk
 def coordInBound(app, bp):
-    (chunk, block) = localChunk(bp)
+    (chunk, _) = localChunk(bp)
     
     return chunk in app.chunks
 
@@ -268,17 +267,13 @@ def blockInWorld(bp):
 # returns a boolean value that represents whether or not a block is fully buried or not
 def isBuried(app, bp):
     # if any of the faces of the block isn't adjacent to anything, then block isn't buried
-    for fID in range(0, 12, 2):
-        adja = adjaBlockPos(bp, fID)
-        
+    for fID in range(0, 12, 2):        
         # this checks if its buried
-        if not coordOccupied(app, adja):
+        if not coordOccupied(app, adjaBlockPos(bp, fID)):
             return False
     
     # all spaces adjacent to block are taken so block is buried
     return True
-
-# TODO Code this
 
 # update block buried booleans for blocks that are next to another block if that
 # coord is in a chunk that's stored in app.chunks
@@ -328,7 +323,7 @@ def loadUnloadChunk(app):
     for unloadCP in app.chunks:
         (ux, _, uz) = unloadCP
         dist = max(abs(ux - x), abs(uz - z))
-        
+
         # unload chunk
         if(dist > 2):
             shouldUnload.append(unloadCP)
@@ -344,9 +339,9 @@ def loadUnloadChunk(app):
             (ux, _, uz) = unloadCP
             dist = max(abs(ux - x), abs(uz - z))
             
-            urgent = dist < 1
+            urgent = (dist <= 1)
             
-            if urgent or (loadedChunks < 1):
+            if (urgent or (loadedChunks < 1)):
                 loadedChunks += 1
                 loadChunk(app, loadCP)
 
@@ -366,12 +361,12 @@ def tickChunk(app):
         chunk = app.chunks[cp]
         adjaChunks = countLoadedAdjaChunk(app, cp, 1)
         
-        if not (chunk.isFinalized and adjaChunks == 8):
+        if not (chunk.isFinalized and adjaChunks != 8):
             chunk.lightOpt(app)
             
         chunk.isVisible = (adjaChunks == 8)
         chunk.isTicking = (adjaChunks == 8)
-
+        
 # Ticking is done in stages so that collision detection works as expected:
 # First we update the player's Y position and resolve Y collisions,
 # then we update the player's X position and resolve X collisions,
@@ -509,7 +504,7 @@ def updateLight(app, bp):
         
         for fID in range(0, 12, 2):
             nP = adjaBlockPos(pos, fID)
-            gP = chunk.globalBlockPos(nP)
+            gP = chunk._globalBlockPos(nP)
             
             # if the next block position is out of bounds or occupied or out of chunk
             # just ignore it and keep its lightlvl the same
