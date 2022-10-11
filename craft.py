@@ -4,6 +4,7 @@ import math
 import render
 import world
 from world import Chunk, ChunkPosition
+from typing import List
 import perlin_noise
 
 def appStarted(app):
@@ -44,7 +45,7 @@ def appStarted(app):
     }
     
     # tuples that contain directional values equivalent to faces
-    faces = [
+    faces : List[render.Face] = [
         # Left
         (0, 2, 1),
         (1, 2, 3),
