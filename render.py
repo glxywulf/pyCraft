@@ -62,7 +62,7 @@ class Instance:
 def toHomogenous(a : ndarray) -> ndarray:
     assert(a.shape[1] == 1)
     
-    return np.array([[a[0, 0]], [a[1, 0]], [a[2, 0]], [1]])
+    return np.array([[a[0, 0]], [a[1, 0]], [a[2, 0]], [1.0]])
 
 # turns a matrix row into a cartesian coordinate
 # * toCartesian
@@ -134,7 +134,9 @@ def csToCanvasMat(vpDist, vpWidth, vpHeight, canvWidth, canvHeight):
 # https://gamedev.stackexchange.com/questions/168542/camera-view-matrix-from-position-yaw-pitch-worldup
 # Modified similarly to: https://github.com/SuperTails/112craft 
 def wsToCamMat(cp, y, p):
-    y = -y
+    yaw = -y
+    
+    y = yaw
     a = cp[0]
     b = cp[1]
     c = cp[2]
@@ -171,9 +173,9 @@ def wsToCam(point, cp):
 # returns the distance of a camera to viewpoint in a matrix
 def camToVpMat(vpd):
     return np.array([
-        [vpd, 0, 0, 0],
-        [0, vpd, 0, 0],
-        [0, 0, 1, 0]
+        [vpd, 0.0, 0.0, 0.0],
+        [0.0, vpd, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0]
     ])
     
 # camera to viewpoint
@@ -226,10 +228,10 @@ def isBackFace(v0, v1, v2) -> bool:
 
 # check if a certain face of a block is visible. returns a bool
 def blockFaceVisible(app, bp : BlockPosition, fID : int) -> bool:
-    (x, y, z) = world.adjacentBlockPos(bp, fID)
+    (x, y, z) = adjacentBlockPos(bp, fID)
     
     # if adjacent coords are occupied then face is not visible
-    if(world.coordsOccupied(app, world.BlockPosition(x, y, z))):
+    if(world.coordsOccupied(app, BlockPosition(x, y, z))):
         return False
     
     return True
@@ -237,10 +239,10 @@ def blockFaceVisible(app, bp : BlockPosition, fID : int) -> bool:
 # get the light lvl of a blocks face
 def blockFaceLight(app, bp : BlockPosition, fID : int) -> int:
     # get the light lvl of a block adjacent to the block in the direction of the face
-    position = world.adjacentBlockPos(bp, fID)
+    position = adjacentBlockPos(bp, fID)
     (chunk, (x, y, z)) = world.getChunk(app, position)
     
-    return chunk.lightlvls[x, y, z]
+    return chunk.lightLevels[x, y, z]
 
 # returns bool saying if a back face is a back face
 def isBackBlockFace(app, bp : BlockPosition, fID : int) -> bool:
@@ -369,13 +371,13 @@ def cullInstance(app, toCamMat : ndarray, instance : Instance, bp : Optional[Blo
             
             # if face is visible, adjust the rgb coloring of the face depending on the 
             # lightlvl it has
-            lightlvl = blockFaceLight(app, bp, fID)
+            light = blockFaceLight(app, bp, fID)
             
             r = int(color[1:3], base = 16)
             g = int(color[3:5], base = 16)
             b = int(color[5:7], base = 16)
             
-            brightness = (lightlvl + 1) / 8
+            brightness = (light + 1) / 8
             
             r *= brightness
             g *= brightness
@@ -503,12 +505,12 @@ def redrawAll(app, canvas):
     renderInstances(app, canvas)
     
     # set important values and position stuffs
-    origin = wsToCanvas(app, np.array([[0], [0], [0]]))
-    xAxis = wsToCanvas(app, np.array([[1], [0], [0]]))
-    yAxis = wsToCanvas(app, np.array([[0], [1], [0]]))
-    zAxis = wsToCanvas(app, np.array([[0], [0], [1]]))
+    origin = wsToCanvas(app, np.array([[0.0], [0.0], [0.0]]))
+    xAxis = wsToCanvas(app, np.array([[1.0], [0.0], [0.0]]))
+    yAxis = wsToCanvas(app, np.array([[0.0], [1.0], [0.0]]))
+    zAxis = wsToCanvas(app, np.array([[0.0], [0.0], [1.0]]))
     
-    xpoint = wsToCamMat(app.camPos, app.camYaw, app.camPitch) @ toHomogenous(np.array([[1], [0], [0]]))
+    xpoint = wsToCamMat(app.camPos, app.camYaw, app.camPitch) @ toHomogenous(np.array([[1.0], [0.0], [0.0]]))
     xpoint = toCartesian(xpoint)
 
     canvas.create_line(origin[0], origin[1], xAxis[0], xAxis[1], fill = 'red')

@@ -173,7 +173,7 @@ class Chunk:
         # if we need to update light and buried states on a global scale then we
         # update the values
         if(doUpdateBuried):
-            updateBuriedNear(app, gloPos)
+            updateBuriedStateNear(app, gloPos)
                 
         if(doUpdateLight):
             updateLight(app, gloPos)
@@ -181,12 +181,12 @@ class Chunk:
 # * Helper Functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # accesses the class function inside chunk.
-def updateBuried(app, bp):
+def updateBuriedStateAt(app, bp : BlockPosition):
     (chunk, innerPos) = getChunk(app, bp)
-    chunk.updateBuried(app, innerPos)
+    chunk.updateBuriedStateAt(app, innerPos)
 
 # get the chunk a certain block is in
-def getChunk(app, bp):
+def getChunk(app, bp : BlockPosition) -> Tuple[Chunk, BlockPosition]:
     # chunk coords are div 16 of the block coords, make it into chunkPos object
     (chunkX, chunkY, chunkZ) = bp
     
@@ -206,22 +206,22 @@ def getChunk(app, bp):
     return (chunk, BlockPosition(x, y, z))
 
 # helper to get the variables we need for the function inside the Chunk class
-def coordsOccupied(app, bp):
+def coordsOccupied(app, bp : BlockPosition) -> bool:
     # if the blockPos is outside of chunk bounds return False
-    if not coordInBound(app, bp):
+    if not coordsInBounds(app, bp):
         return False
     
     (chunk, innerBP) = getChunk(app, bp)
     
-    return chunk.coordOccupied(innerBP)
+    return chunk.coordsOccupied(innerBP)
 
 # access the setBlock class function of chunk outside of chunk object
-def setBlock(app, bp, bID, doUpdateLight = True):
+def setBlock(app, bp : BlockPosition, bID : BlockId, doUpdateLight = True) -> None:
     (chunk, innerBP) = getChunk(app, bp)
     chunk.setBlock(app, innerBP, bID, doUpdateLight)
     
 # returns the chunk's world position based off of a global block position
-def localChunk(bp):
+def toChunkLocal(bp : BlockPosition) -> Tuple[ChunkPosition, BlockPosition]:
     (x, y, z) = bp
     
     # chunk coords should be what ever the xyz is int divided by 16
@@ -242,31 +242,31 @@ def localChunk(bp):
     return (cPos, newBP)
 
 # figure out if the coords of the block are within the chunk
-def coordInBound(app, bp):
-    (chunk, _) = localChunk(bp)
+def coordsInBounds(app, bp : BlockPosition) -> bool:
+    (chunk, _) = toChunkLocal(bp)
     
     return chunk in app.chunks
 
 # returns integer value of the closest block in a certain axis 
 # (i.e. x: 14.2345 -> 14; y: 1.235 -> 1)
-def nearestBlock(coord):
+def nearestBlockCoord(coord : float) -> int:
     return round(coord)
 
 # reuturns the coordinate of the nearest block
-def nearestBP(x, y, z):
-    bX = nearestBlock(x)
-    bY = nearestBlock(y)
-    bZ = nearestBlock(z)
+def nearestBlockPos(x : float, y : float, z : float) -> BlockPosition:
+    bX : int = nearestBlockCoord(x)
+    bY : int = nearestBlockCoord(y)
+    bZ : int = nearestBlockCoord(z)
     return BlockPosition(bX, bY, bZ)
 
 # returns the position of the center of a block in relation to the world
-def blockToWorld(bp):
+def blockToWorld(bp : BlockPosition) -> Tuple[float, float, float]:
     (x, y, z) = bp
     
     return (x, y, z)
 
 # returns a boolean value that represents whether or not a block is fully buried or not
-def isBuried(app, bp):
+def blockIsBuried(app, bp : BlockPosition):
     # if any of the faces of the block isn't adjacent to anything, then block isn't buried
     for fID in range(0, 12, 2):        
         # this checks if its buried
@@ -278,14 +278,14 @@ def isBuried(app, bp):
 
 # update block buried booleans for blocks that are next to another block if that
 # coord is in a chunk that's stored in app.chunks
-def updateBuriedNear(app, bp):
+def updateBuriedStateNear(app, bp : BlockPosition):
     for fID in range(0, 12, 2):
         adjaPos =  adjacentBlockPos(bp, fID)
-        if coordInBound(app, adjaPos):
-            updateBuried(app, adjaPos)
+        if coordsInBounds(app, adjaPos):
+            updateBuriedStateAt(app, adjaPos)
 
 # will return a generator object full of every chunk adjacent to inputted chunkPos
-def adjaChunk(cp, dist):
+def adjacentChunks(cp, dist):
     for xOffset in range(-dist, dist + 1):
         for zOffset in range(-dist, dist + 1):
             if(xOffset == zOffset):
@@ -302,20 +302,20 @@ def adjaChunk(cp, dist):
 
 # unload specified chunk at position cp by removing it from app.chunks
 # helper function to unload chunks
-def unloadChunk(app, cp):
+def unloadChunk(app, cp : ChunkPosition):
     print(f"Unloading chunk at {cp}")
     app.chunks.pop(cp)
 
 # load chunk by adding new chunk into app.chunks
 # helper function to load chunks
-def loadChunk(app, cp):
+def loadChunk(app, cp : ChunkPosition):
     print(f"Loading chunk at {cp}")
     app.chunks[cp] = Chunk(cp)
     app.chunks[cp].generate(app)
 
 # mass load and unload all chunks
 def loadUnloadChunk(app):
-    (cp, _) = localChunk(nearestBP(app.camPos[0], app.camPos[1], app.camPos[2]))
+    (cp, _) = toChunkLocal(nearestBlockPos(app.camPos[0], app.camPos[1], app.camPos[2]))
     (x, _, z) = cp
     
     shouldUnload = []
@@ -335,7 +335,7 @@ def loadUnloadChunk(app):
         
     loadedChunks = 0
     
-    for loadCP in adjaChunk(cp, 2):
+    for loadCP in adjacentChunks(cp, 2):
         if(loadCP not in app.chunks):
             (ux, _, uz) = unloadCP
             dist = max(abs(ux - x), abs(uz - z))
@@ -347,23 +347,23 @@ def loadUnloadChunk(app):
                 loadChunk(app, loadCP)
 
 # return the number of loaded adjacent chunks
-def countLoadedAdjaChunk(app, cp, dist):
+def countLoadedAdjacentChunks(app, cp : ChunkPosition, dist : int) -> int:
     count = 0
     
-    for pos in adjaChunk(cp, dist):
+    for pos in adjacentChunks(cp, dist):
         if(pos in app.chunks):
             count += 1
             
     return count
 
 # light and optimize chunk if chunk is finalized and its next to 8 chunks
-def tickChunk(app):
+def tickChunks(app):
     for cp in app.chunks:
         chunk = app.chunks[cp]
-        adjaChunks = countLoadedAdjaChunk(app, cp, 1)
+        adjaChunks = countLoadedAdjacentChunks(app, cp, 1)
         
         if not (chunk.isFinalized and adjaChunks != 8):
-            chunk.lightOpt(app)
+            chunk.lightAndOptimize(app)
             
         chunk.isVisible = (adjaChunks == 8)
         chunk.isTicking = (adjaChunks == 8)
@@ -375,12 +375,12 @@ def tickChunk(app):
 def tick(app):
     loadUnloadChunk(app)
     
-    tickChunk(app)
+    tickChunks(app)
     
     app.camPos[1] += app.playerVelocity[1]
     
     if(app.playerOnGround):
-        if not(hasBeneath(app)):
+        if not(hasBlockBeneath(app)):
             app.playerOnGround = False
         else:
             app.playerVelocity[1] = -app.gravity
@@ -390,7 +390,7 @@ def tick(app):
             yP -= .1
             feetPos = round(yP)
             
-            if(hasBeneath(app)):
+            if(hasBlockBeneath(app)):
                 app.playerOnGround = True
                 app.playerVelocity[1] = 0
                 app.camPos[1] = (feetPos + .5) + app.playerHeight
@@ -461,18 +461,18 @@ def tick(app):
                 app.camPos[0] = ZEdge + app.playerRadius
 
 # access chunk object at specified position and set it's lightlvl to inputted lvl
-def setLight(app, bp, lvl):
+def setLightLevel(app, bp : BlockPosition, lvl : int):
     (chunk, (x, y, z)) = getChunk(app, bp)
-    chunk.lightlvls[x, y, z] = lvl
+    chunk.lightLevels[x, y, z] = lvl
 
 # update light levels for blocks
-def updateLight(app, bp):
+def updateLight(app, bp : BlockPosition):
     # FIXME: Will be changed later since it bugs out a bit. Doesn't quite propogate
     # over chunk boundaries without making it much much slower
 
     # get the chunk that we're in and initialize the lightlvls list attribute of the chunk
     (chunk, bp) = getChunk(app, bp)
-    chunk.lightlvls = np.full_like(chunk.blocks, 0, int)
+    chunk.lightLevels = np.full_like(chunk.blocks, 0, int)
     
     # get the shape of chunk.blocks
     shape = chunk.blocks.shape
@@ -501,7 +501,7 @@ def updateLight(app, bp):
         
         # get the block postion and set the lightlvl in the same position to the light lvl
         (x, y, z) = pos
-        chunk.lightlvls[x, y, z] = light
+        chunk.lightLevels[x, y, z] = light
         
         for fID in range(0, 12, 2):
             nP = adjacentBlockPos(pos, fID)
@@ -511,11 +511,11 @@ def updateLight(app, bp):
             # just ignore it and keep its lightlvl the same
             if(nP in done):
                 continue
-            if not coordInBound(app, gP):
+            if not coordsInBounds(app, gP):
                 continue
             if coordsOccupied(app, gP):
                 continue
-            if(nP[0] < 0 or nP[0] >= 16):
+            if(nP[0] < 0 or 16 <= nP[0]):
                 continue
             if(nP[1] < 0 or 16 <= nP[1]):
                 continue
@@ -535,22 +535,22 @@ def updateLight(app, bp):
             heapq.heappush(queue, (-nLight, nP))
         
 # remove blocks from the world and replace with 'air' block
-def removeBlock(app, bp):
+def removeBlock(app, bp : BlockPosition):
     setBlock(app, bp, 'air')
 
 # set block function that'll place blocks
-def addBlock(app, bp, bID):
+def addBlock(app, bp : BlockPosition, bID : BlockId):
     setBlock(app, bp, bID)
 
 # check if player has block beneath them or not. returns boolean
-def hasBeneath(app):
+def hasBlockBeneath(app):
     xP, yP, zP = app.camPos
     yP -= app.playerHeight
     yP -= .1
     
     for x in [xP - app.playerRadius * 0.99, xP + app.playerRadius * 0.99]:
         for z in [zP - app.playerRadius * 0.99, zP + app.playerRadius * 0.99]:
-            feetPos = nearestBP(x, yP, z)
+            feetPos = nearestBlockPos(x, yP, z)
             if(coordsOccupied(app, feetPos)):
                 return True
             
@@ -558,9 +558,9 @@ def hasBeneath(app):
 
 # returning the position of the block that is next to the original block
 # that is touching the face that was inputted
-def adjacentBlockPos(bP, fID):
+def adjacentBlockPos(bP : BlockPosition, fID : int) -> BlockPosition:
     # get the blocks position in a list
-    x, y, z = bP
+    [x, y, z] = bP
     
     # turns whatever fID is into half of what it was so that it's a value within
     # the index of the list below
@@ -580,7 +580,7 @@ def adjacentBlockPos(bP, fID):
 # * needs to be optimized later too
 # returns a tuple containing the block position of a block we're looking at
 # and which face we're looking at
-def lookBlock(app):
+def lookBlock(app) -> Optional[Tuple[BlockPosition, str]]:
     lookX = cos(app.camPitch) * sin(-app.camYaw)
     lookY = sin(app.camPitch)
     lookZ = cos(app.camPitch) * cos(-app.camYaw)
@@ -598,7 +598,7 @@ def lookBlock(app):
     
     [x, y, z] = app.camPos
     
-    maxDist = .6
+    maxDist = 6.0
     
     bp = None
     
@@ -607,7 +607,7 @@ def lookBlock(app):
         y += lookY
         z += lookZ
         
-        tempBP = nearestBP(x, y, z)
+        tempBP = nearestBlockPos(x, y, z)
         
         if(coordsOccupied(app, tempBP)):
             bp = tempBP
