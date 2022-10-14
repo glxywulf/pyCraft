@@ -129,7 +129,7 @@ def appStarted(app):
     app.wireFrame = False
     
     # canvas to matrix thing
-    app.csToCanvMat = render.csToCanvasMat(app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
+    app.csToCanvasMat = render.csToCanvasMat(app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
 
 # if window size changes then we need to re-initialize the size of things in the app again
 def sizeChanged(app):

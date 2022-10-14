@@ -59,33 +59,33 @@ class Instance:
         return result
     
 # turns an inputted array into a ndarray that represents a row in a matrix.
-def toHomogenous(a : ndarray) -> ndarray:
-    assert(a.shape[1] == 1)
+def toHomogenous(cartesian : ndarray) -> ndarray:
+    assert(cartesian.shape[1] == 1)
     
-    return np.array([[a[0, 0]], [a[1, 0]], [a[2, 0]], [1.0]])
+    return np.array([[cartesian[0, 0]], [cartesian[1, 0]], [cartesian[2, 0]], [1.0]])
 
 # turns a matrix row into a cartesian coordinate
 # * toCartesian
-def toCartesian(a : ndarray) -> ndarray:
+def toCartesian(cartesian : ndarray) -> ndarray:
     # make sure the inputted array has one column
-    assert(a.shape[1] == 1)
+    assert(cartesian.shape[1] == 1)
     
     # flatten the array into a 1d list of the values
-    a = a.ravel()
+    cart = cartesian.ravel()
     
     # return the first 3 values divided by the last value to get coordinates
     # that are a cartesian representation of the vertice
-    return a[ :-1] / a[-1]
+    return cart[ :-1] / cart[-1]
 
 # returns a array with values of a vector that's been translated about the x-axis
 # in the form of a matrix
 # formula from: https://www.redcrab-software.com/en/Calculator/4x4/Matrix/Rotation-X
 def rotateX(theta):
     return np.array([
-        [1, 0, 0, 0],
-        [0, cos(theta), -sin(theta),0],
-        [0, sin(theta), cos(theta), 0],
-        [0, 0, 0, 1]
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, math.cos(theta), -math.sin(theta), 0.0],
+        [0.0, math.sin(theta), math.cos(theta), 0.0],
+        [0.0, 0.0, 0.0, 1.0]
     ])
 
 # returns a array with values of a vector that's been translated about the y-axis
@@ -93,10 +93,10 @@ def rotateX(theta):
 # formula from: https://www.redcrab-software.com/en/Calculator/4x4/Matrix/Rotation-Y
 def rotateY(theta):
     return np.array([
-        [cos(theta), 0, sin(theta), 0],
-        [0, 1, 0, 0],
-        [-sin(theta), 0, cos(theta), 0],
-        [0, 0, 0, 1]
+        [math.cos(theta), 0.0, math.sin(theta), 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [-math.sin(theta), 0.0, math.cos(theta), 0.0],
+        [0.0, 0.0, 0.0, 1.0]
     ])
 
 # returns a array with values of a vector that's been translated about the z-axis
@@ -104,26 +104,25 @@ def rotateY(theta):
 # formula from: https://www.redcrab-software.com/en/Calculator/4x4/Matrix/Rotation-Z
 def rotateZ(theta):
     return np.array([
-        [cos(theta), -sin(theta), 0, 0],
-        [sin(theta), cos(theta), 0, 0],
-        [0, 0, 1, 0],
-        [0, 0, 0, 1]
+        [math.cos(theta), -math.sin(theta), 0.0, 0.0],
+        [math.sin(theta), math.cos(theta), 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0]
     ])
 
 # returns a matrix that holds translation values for the vertice
 def translationMat(x, y, z):
     return np.array([
-        [1, 0, 0, x],
-        [0, 1, 0, y],
-        [0, 0, 1, z],
-        [0, 0, 0, 1]
+        [1.0, 0.0, 0.0, x],
+        [0.0, 1.0, 0.0, y],
+        [0.0, 0.0, 1.0, z],
+        [0.0, 0.0, 0.0, 1.0]
     ])
     
 # 3d space to canvas matrix
 def wsToCanvasMat(camPos, yaw, pitch, vpDist, vpWidth, vpHeight, canvWidth, canvHeight):
-    vp = vpToCanvasMat(vpWidth, vpHeight, canvWidth, canvHeight)
-    
-    return vp @ camToVpMat(vpDist) @ wsToCamMat(camPos, yaw, pitch)
+    vpToCanv = vpToCanvasMat(vpWidth, vpHeight, canvWidth, canvHeight)
+    return vpToCanv @ camToVpMat(vpDist) @ wsToCamMat(camPos, yaw, pitch)
 
 def csToCanvasMat(vpDist, vpWidth, vpHeight, canvWidth, canvHeight):
     vpToCanv = vpToCanvasMat(vpWidth, vpHeight, canvWidth, canvHeight)
@@ -142,25 +141,25 @@ def wsToCamMat(cp, y, p):
     c = cp[2]
     
     return np.array([
-        [cos(y), 0, -sin(y), (c * sin(y)) - (a * cos(y))],
-        [-sin(p) * sin(y), cos(p), -sin(p) * cos(y), (c * sin(p) * cos(y)) + (a * sin(p) * sin(y)) - (b * cos(p))],
-        [cos(p) * sin(y), sin(p), cos(p) * cos(y), (-b * sin(p)) - (a * sin(y) * cos(p)) - (c * cos(y) * cos(p))],
-        [0, 0, 0, 1]
+        [cos(y), 0.0, -sin(y), c * sin(y) - a * cos(y)],
+        [-sin(p) * sin(y), cos(p), -sin(p) * cos(y), c * sin(p) * cos(y) + a * sin(p) * sin(y) - b * cos(p)],
+        [cos(p) * sin(y), sin(p), cos(p) * cos(y), -b * sin(p) - a * sin(y) * cos(p) - c * cos(y) * cos(p)],
+        [0.0, 0.0, 0.0, 1.0]
     ])
 
 # viewpoint with respect to canvas matrix
 def vpToCanvasMat(vpW, vpH, cW, cH):
     w = cW / vpW
-    h = cH / vpH
+    h = -cH / vpH
     
     x = cW * .5
     y = cH * .5
     
     return np.array([
-        [w, 0, x],
-        [0, h, y],
-        [0, 0, 1]
-    ])
+        [w, 0.0, x],
+        [0.0, h, y],
+        [0.0, 0.0, 1.0]
+        ])
 
 # return a tuple of the distance from a point to the camera position
 def wsToCam(point, cp):
@@ -196,11 +195,11 @@ def vpToCanvas(point, vpW, vpH, canvWidth, canvHeight):
 # convert a point in space into a xy coordinate in the canvas
 def wsToCanvas(app, point):
     point = toHomogenous(point)
-    matrix = wsToCanvasMat(app.camPos, app.camYaw, app.camPitch, app.vpDist, 
-                          app.vpWidth, app.vpHeight, app.width, app.height)
-    
-    point = matrix @ point
-    
+    mat = wsToCanvasMat(app.camPos, app.camYaw, app.camPitch,
+        app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
+
+    point = mat @ point
+
     point = toCartesian(point)
     
     return point
@@ -271,7 +270,7 @@ def isBackBlockFace(app, bp : BlockPosition, fID : int) -> bool:
     elif(fID == 4):
         return yDiff > -.5
     # top
-    elif(fID == 5):
+    else:
         return yDiff < .5
 
 # FIXME: This doesn't conserve the CCW vertex ordering. See how he changes this later
@@ -309,8 +308,8 @@ def clip(app, vertices : List[Any], face : Face) -> List[Face]:
         cID = len(vertices)
         vertices.append(np.array([[xc], [yc], [app.vpDist], [1]]))
 
-        face0 = (v0, v1, dID)
-        face1 = (v0, v1, cID)
+        face0 : Face = (v0, v1, dID)
+        face1 : Face = (v0, v1, cID)
         
         return [face0, face1]
     else:
@@ -325,7 +324,7 @@ def clip(app, vertices : List[Any], face : Face) -> List[Face]:
         bIdx = len(vertices)
         vertices.append(np.array([[xb], [yb], [app.vpDist], [1.0]]))
 
-        clippedFace = (v0, aIdx, bIdx)
+        clippedFace : Face = (v0, aIdx, bIdx)
 
         return [clippedFace]
 
@@ -342,13 +341,13 @@ def clip(app, vertices : List[Any], face : Face) -> List[Face]:
 # Then a list of faces, their vertices, and their colors are returned
 def cullInstance(app, toCamMat : ndarray, instance : Instance, bp : Optional[BlockPosition]) -> List[Tuple[Any, Face, Color]]:
     vertices = list(map(lambda v : toCamMat @ v, instance.worldSpaceVertices()))
-    
+
     faces = []
-    
+
     skipNext = False
     
     # go through every block and assign each block's face with its texture stored in its instance
-    for (fID, (face, color)) in enumerate(zip(instance.model.faces, instance.texture)):
+    for (faceIdx, (face, color)) in enumerate(zip(instance.model.faces, instance.texture)):
         # if skipNext is true then we skip the block we're on and set skip to False
         if(skipNext):
             skipNext = False
@@ -356,22 +355,22 @@ def cullInstance(app, toCamMat : ndarray, instance : Instance, bp : Optional[Blo
         
         if(bp is not None):
             # if block has no visible faces, ignore it
-            if not (instance.visibleFaces[fID]):
+            if not (instance.visibleFaces[faceIdx]):
                 continue
             
             # if we see the back of a block skipNext is set to True and current block face is ignored
-            if(isBackBlockFace(app, bp, fID)):
+            if(isBackBlockFace(app, bp, faceIdx)):
                 skipNext = True
                 continue
             
             # if currect face is not visible skipNext is true and current face is ignored
-            if not (blockFaceVisible(app, bp, fID)):
+            if not (blockFaceVisible(app, bp, faceIdx)):
                 skipNext = True
                 continue
             
             # if face is visible, adjust the rgb coloring of the face depending on the 
             # lightlvl it has
-            light = blockFaceLight(app, bp, fID)
+            light = blockFaceLight(app, bp, faceIdx)
             
             r = int(color[1:3], base = 16)
             g = int(color[3:5], base = 16)
@@ -383,9 +382,9 @@ def cullInstance(app, toCamMat : ndarray, instance : Instance, bp : Optional[Blo
             g *= brightness
             b *= brightness
             
-            r = max(0, min(255, r))
-            g = max(0, min(255, g))
-            b = max(0, min(255, b))
+            r = max(0, min(255.0, r))
+            g = max(0, min(255.0, g))
+            b = max(0, min(255.0, b))
             
             # set new color hexcode
             color = '#{:02X}{:02X}{:02X}'.format(int(r), int(g), int(b))
@@ -432,11 +431,11 @@ def blockPosIsVisible(app, bp : BlockPosition) -> bool:
 # render instance function
 def renderInstances(app, canvas):
     faces = drawToFaces(app)
-    
-    zCoord = lambda d: -(d[0][d[1][0]][2] + d[0][d[1][1]][2] + d[0][d[1][2]][2])
-    
-    faces.sort(key = zCoord)
-    
+
+    zCoord = lambda d : -(d[0][d[1][0]][2] + d[0][d[1][1]][2] + d[0][d[1][2]][2])
+
+    faces.sort(key=zCoord)
+
     drawToCanvas(app, canvas, faces)
 
 # get the faces that need to be drawn and are within the render distance set in app
@@ -445,7 +444,7 @@ def drawToFaces(app):
     faces = []
     for chunkPos in app.chunks:
         chunk = app.chunks[chunkPos]
-        if(chunk.isVisible and chunk.isFinalized):
+        if chunk.isVisible and chunk.isFinalized:
             for (i, inst) in enumerate(chunk.instances):
                 if inst is not None:
                     (inst, unburied) = inst
@@ -465,26 +464,25 @@ def drawToFaces(app):
 
 # draw everything to the app canvas
 def drawToCanvas(app, canvas, faces):
-    matrix = app.csToCanvMat
-    
+    mat = app.csToCanvasMat
+
     for i in range(len(faces)):
-        if(type(faces[i][0]) != type((0, 0))):
-            vert = list(map(lambda v : toCartesian(matrix @ v), faces[i][0]))
-            faces[i][0] = (vert, True)
-            
+        if type(faces[i][0]) != type((0, 0)):
+            verts = list(map(lambda v : toCartesian(mat @ v), faces[i][0]))
+            faces[i][0] = (verts, True)
+
         ((vertices, _), face, color) = faces[i]
-        
+
         v0 = vertices[face[0]]
         v1 = vertices[face[1]]
         v2 = vertices[face[2]]
         
         # if wireFrame is true, draw the edges of a block face onto canvas
-        if app.wireFrame:
+        if app.wireframe:
             edges = [(v0, v1), (v0, v2), (v1, v2)]
-            
-            for (v0, v1) in edges:
-                canvas.create_line(v0[0], v0[1], v1[0], v1[1], fill = color)
-                
+
+            for (v0, v1) in edges:            
+                canvas.create_line(v0[0], v0[1], v1[0], v1[1], fill=color)
         else:
             canvas.create_polygon(v0[0], v0[1], v1[0], v1[1], v2[0], v2[1], fill = color)
 
