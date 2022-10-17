@@ -5,7 +5,7 @@ import numpy as np
 from math import sin, cos
 from numpy import ndarray
 from typing import List, Tuple, Optional, Any
-from world import BlockPosition, adjacentBlockPos
+from world import BlockPos, adjacentBlockPos
 
 Color = str
 
@@ -35,11 +35,11 @@ class Instance:
     
     _worldSpaceVertices : List[ndarray]
     
-    def __init__(self, model: Model, trans: ndarray, texture: List[Color]):
+    def __init__(self, model : Model, trans : ndarray, texture : List[Color]):
         self.model = model
         self.trans = trans
         self.texture = texture
-        
+
         self._worldSpaceVertices = list(map(toHomogenous, self.worldSpaceVerticesUncached()))
         self.visibleFaces = [True] * len(model.faces)
     
@@ -65,17 +65,13 @@ def toHomogenous(cartesian : ndarray) -> ndarray:
     return np.array([[cartesian[0, 0]], [cartesian[1, 0]], [cartesian[2, 0]], [1.0]])
 
 # turns a matrix row into a cartesian coordinate
-# * toCartesian
 def toCartesian(cartesian : ndarray) -> ndarray:
     # make sure the inputted array has one column
     assert(cartesian.shape[1] == 1)
-    
-    # flatten the array into a 1d list of the values
+
     cart = cartesian.ravel()
-    
-    # return the first 3 values divided by the last value to get coordinates
-    # that are a cartesian representation of the vertice
-    return cart[ :-1] / cart[-1]
+
+    return cart[:-1] / cart[-1]
 
 # returns a array with values of a vector that's been translated about the x-axis
 # in the form of a matrix
@@ -148,18 +144,17 @@ def wsToCamMat(cp, y, p):
     ])
 
 # viewpoint with respect to canvas matrix
-def vpToCanvasMat(vpW, vpH, cW, cH):
-    w = cW / vpW
-    h = -cH / vpH
-    
-    x = cW * .5
-    y = cH * .5
-    
+def vpToCanvasMat(vpWidth, vpHeight, canvWidth, canvHeight):
+    w = canvWidth / vpWidth
+    h = -canvHeight / vpHeight
+
+    x = canvWidth * 0.5
+    y = canvHeight * 0.5
+
     return np.array([
         [w, 0.0, x],
         [0.0, h, y],
-        [0.0, 0.0, 1.0]
-        ])
+        [0.0, 0.0, 1.0]])
 
 # return a tuple of the distance from a point to the camera position
 def wsToCam(point, cp):
@@ -170,7 +165,9 @@ def wsToCam(point, cp):
     return [x, y, z]
 
 # returns the distance of a camera to viewpoint in a matrix
-def camToVpMat(vpd):
+def camToVpMat(vpDist):
+    vpd = vpDist
+
     return np.array([
         [vpd, 0.0, 0.0, 0.0],
         [0.0, vpd, 0.0, 0.0],
@@ -178,24 +175,24 @@ def camToVpMat(vpd):
     ])
     
 # camera to viewpoint
-def camToVp(point, vpd):
+def camToVp(point, vpDist):
     # view point x and y calculated and divided based on z coord
-    vpX = point[0] * vpd / point[2]
-    vpY = point[1] * vpd / point[2]
+    vpX = point[0] * vpDist / point[2]
+    vpY = point[1] * vpDist / point[2]
 
     return [vpX, vpY]
 
 # translate the player viewpoint from the xy point to a xy point on the canvas
-def vpToCanvas(point, vpW, vpH, canvWidth, canvHeight):
-    canvX = (point[0] / vpW + 0.5) * canvWidth
-    canvY = (-point[1] / vpH + 0.5) * canvHeight
+def vpToCanvas(point, vpWidth, vpHeight, canvWidth, canvHeight):
+    canvX = (point[0] / vpWidth + 0.5) * canvWidth
+    canvY = (-point[1] / vpHeight + 0.5) * canvHeight
 
     return [canvX, canvY]
 
 # convert a point in space into a xy coordinate in the canvas
 def wsToCanvas(app, point):
     point = toHomogenous(point)
-    mat = wsToCanvasMat(app.camPos, app.camYaw, app.camPitch,
+    mat = wsToCanvasMat(app.cameraPos, app.cameraYaw, app.cameraPitch,
         app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
 
     point = mat @ point
@@ -209,108 +206,106 @@ def faceNormal(v0, v1, v2):
     v0 = toCartesian(v0)
     v1 = toCartesian(v1)
     v2 = toCartesian(v2)
-    
+
     a = v1 - v0
     b = v2 - v0
+    cross = np.cross(a, b)
     
-    result = np.cross(a, b)
-    
-    return result
+    return cross
 
 # vertices have to be within the camera space
 # technique from: https://en.wikipedia.org/wiki/Back-face_culling
 def isBackFace(v0, v1, v2) -> bool:
     normal = faceNormal(v0, v1, v2)
     v0 = toCartesian(v0)
-    
+
     return -np.dot(v0, normal) >= 0
 
 # check if a certain face of a block is visible. returns a bool
-def blockFaceVisible(app, bp : BlockPosition, fID : int) -> bool:
-    (x, y, z) = adjacentBlockPos(bp, fID)
-    
-    # if adjacent coords are occupied then face is not visible
-    if(world.coordsOccupied(app, BlockPosition(x, y, z))):
+def blockFaceVisible(app, blockPos: BlockPos, faceIdx: int) -> bool:
+    (x, y, z) = adjacentBlockPos(blockPos, faceIdx)
+
+    if world.coordsOccupied(app, BlockPos(x, y, z)):
         return False
-    
+
     return True
     
 # get the light lvl of a blocks face
-def blockFaceLight(app, bp : BlockPosition, fID : int) -> int:
+def blockFaceLight(app, blockPos: BlockPos, faceIdx: int) -> int:
     # get the light lvl of a block adjacent to the block in the direction of the face
-    position = adjacentBlockPos(bp, fID)
-    (chunk, (x, y, z)) = world.getChunk(app, position)
+    pos = adjacentBlockPos(blockPos, faceIdx)
+    (chunk, (x, y, z)) = world.getChunk(app, pos)
     
     return chunk.lightLevels[x, y, z]
 
 # returns bool saying if a back face is a back face
-def isBackBlockFace(app, bp : BlockPosition, fID : int) -> bool:
+def isBackBlockFace(app, blockPos: BlockPos, faceIdx: int) -> bool:
     # get the face from face id, block global position
-    fID //= 2
-    (x, y, z) = world.blockToWorld(bp)
+    faceIdx //= 2
+    (x, y, z) = world.blockToWorld(blockPos)
     
     # distance from camera
-    xDiff = app.camPos[0] - x
-    yDiff = app.camPos[1] - y
-    zDiff = app.camPos[2] - z
+    xDiff = app.cameraPos[0] - x
+    yDiff = app.cameraPos[1] - y
+    zDiff = app.cameraPos[2] - z
     
-    # left
-    if(fID == 0):
-        return xDiff > -.5
-    # right
-    elif(fID == 1):
-        return xDiff < .5
-    # front
-    elif(fID == 2):
-        return zDiff > -.5
-    # back
-    elif(fID == 3):
-        return zDiff < .5
-    # bottom
-    elif(fID == 4):
-        return yDiff > -.5
-    # top
+    # Left
+    if faceIdx == 0:
+        return xDiff > -0.5
+    # Right
+    elif faceIdx == 1:
+        return xDiff < 0.5
+    # Near
+    elif faceIdx == 2:
+        return zDiff > -0.5
+    # Far
+    elif faceIdx == 3:
+        return zDiff < 0.5
+    # Bottom
+    elif faceIdx == 4:
+        return yDiff > -0.5
+    # Top
     else:
-        return yDiff < .5
+        return yDiff < 0.5
 
 # FIXME: This doesn't conserve the CCW vertex ordering. See how he changes this later
 
 def clip(app, vertices : List[Any], face : Face) -> List[Face]:
     # lambda function that checks whether or not face vertice is out of view
-    outOfView = lambda id : vertices[id][2] < app.vpDist
+    outOfView = lambda idx: vertices[idx][2] < app.vpDist
     
     # get a numeric value holding how many faces are visible
     numVisible = (not outOfView(face[0])) + ((not outOfView(face[1])) + (not outOfView(face[2])))
     
     # if there are 0 visible faces then return empty list
-    if(numVisible == 0):
+    if numVisible == 0:
         return []
     # if there are 3 visible faces
-    elif(numVisible == 3):
+    elif numVisible == 3:
         return [face]
     
     # get the xyz coordinates of each vertice of the that is in view 
-    [v0, v1, v2] = sorted(face, key = outOfView)
-    
+    [v0, v1, v2] = sorted(face, key=outOfView)
+
     [[x0], [y0], [z0], _] = vertices[v0]
     [[x1], [y1], [z1], _] = vertices[v1]
     [[x2], [y2], [z2], _] = vertices[v2]
-    
+
     if(numVisible == 2):
         xd = (x2 - x0) * (app.vpDist - z0) / (z2 - z0) + x0
         yd = (y2 - y0) * (app.vpDist - z0) / (z2 - z0) + y0
 
         xc = (x2 - x1) * (app.vpDist - z1) / (z2 - z1) + x1
         yc = (y2 - y1) * (app.vpDist - z1) / (z2 - z1) + y1
-        
-        dID = len(vertices)
-        vertices.append(np.array([[xd], [yd], [app.vpDist], [1]]))
-        cID = len(vertices)
-        vertices.append(np.array([[xc], [yc], [app.vpDist], [1]]))
 
-        face0 : Face = (v0, v1, dID)
-        face1 : Face = (v0, v1, cID)
-        
+        dIdx = len(vertices)
+        vertices.append(np.array([[xd], [yd], [app.vpDist], [1.0]]))
+        cIdx = len(vertices)
+        vertices.append(np.array([[xc], [yc], [app.vpDist], [1.0]]))
+
+        face0 : Face = (v0, v1, dIdx)
+        face1 : Face = (v0, v1, cIdx)
+
         return [face0, face1]
     else:
         xa = (x1 - x0) * (app.vpDist - z0) / (z1 - z0) + x0
@@ -339,100 +334,99 @@ def clip(app, vertices : List[Any], face : Face) -> List[Face]:
 # 
 # Then, the faces are clipped, which may remove, modify, or split faces
 # Then a list of faces, their vertices, and their colors are returned
-def cullInstance(app, toCamMat : ndarray, instance : Instance, bp : Optional[BlockPosition]) -> List[Tuple[Any, Face, Color]]:
-    vertices = list(map(lambda v : toCamMat @ v, instance.worldSpaceVertices()))
+def cullInstance(app, toCamMat: ndarray, inst: Instance, blockPos: Optional[BlockPos]) -> List[Tuple[Any, Face, Color]]:
+    vertices = list(map(lambda v: toCamMat @ v, inst.worldSpaceVertices()))
 
     faces = []
 
     skipNext = False
     
     # go through every block and assign each block's face with its texture stored in its instance
-    for (faceIdx, (face, color)) in enumerate(zip(instance.model.faces, instance.texture)):
+    for (faceIdx, (face, color)) in enumerate(zip(inst.model.faces, inst.texture)):
         # if skipNext is true then we skip the block we're on and set skip to False
-        if(skipNext):
+        if skipNext:
             skipNext = False
-            continue
+            continue 
         
-        if(bp is not None):
+        if blockPos is not None:
             # if block has no visible faces, ignore it
-            if not (instance.visibleFaces[faceIdx]):
+            if not inst.visibleFaces[faceIdx]:
                 continue
             
             # if we see the back of a block skipNext is set to True and current block face is ignored
-            if(isBackBlockFace(app, bp, faceIdx)):
+            if isBackBlockFace(app, blockPos, faceIdx):
                 skipNext = True
                 continue
             
             # if currect face is not visible skipNext is true and current face is ignored
-            if not (blockFaceVisible(app, bp, faceIdx)):
+            if not blockFaceVisible(app, blockPos, faceIdx):
                 skipNext = True
                 continue
             
             # if face is visible, adjust the rgb coloring of the face depending on the 
             # lightlvl it has
-            light = blockFaceLight(app, bp, faceIdx)
+            light = blockFaceLight(app, blockPos, faceIdx)
             
-            r = int(color[1:3], base = 16)
-            g = int(color[3:5], base = 16)
-            b = int(color[5:7], base = 16)
-            
+            r = int(color[1:3], base=16)
+            g = int(color[3:5], base=16)
+            b = int(color[5:7], base=16)
+
             brightness = (light + 1) / 8
-            
             r *= brightness
             g *= brightness
             b *= brightness
             
-            r = max(0, min(255.0, r))
-            g = max(0, min(255.0, g))
-            b = max(0, min(255.0, b))
-            
+            r = max(0.0, min(255.0, r))
+            g = max(0.0, min(255.0, g))
+            b = max(0.0, min(255.0, b))
+
             # set new color hexcode
             color = '#{:02X}{:02X}{:02X}'.format(int(r), int(g), int(b))
         
         # if there is no block in the position we're checking and we get to the back
         # face then just skip the block
         else:
-            back = isBackFace(
+            backFace = isBackFace(
                 vertices[face[0]], 
-                vertices[face[1]], 
+                vertices[face[1]],
                 vertices[face[2]]
             )
-            if back:
+            if backFace:
                 continue
-            
-        for clipped in clip(app, vertices, face):
-            faces.append([vertices, clipped, color])
-            
+
+        for clippedFace in clip(app, vertices, face):
+            faces.append([vertices, clippedFace, color])
+
     return faces
 
 # return bool of if a block is visible or not
-def blockPosIsVisible(app, bp : BlockPosition) -> bool:
-    pitch = app.camPitch
-    yaw = app.camYaw
-    
-    lookX = cos(pitch) * sin(-yaw)
+def blockPosIsVisible(app, pos: BlockPos) -> bool:
+    pitch = app.cameraPitch
+    yaw = app.cameraYaw 
+
+    lookX = cos(pitch)*sin(-yaw)
     lookY = sin(pitch)
-    lookZ = cos(pitch) * cos(-yaw)
+    lookZ = cos(pitch)*cos(-yaw)
     
     # get camPos and blockPos in respect to world
-    [camX, camY, camZ] = app.camPos
-    [blockX, blockY, blockZ] = world.blockToWorld(bp)
+    [camX, camY, camZ] = app.cameraPos
+    [blockX, blockY, blockZ] = world.blockToWorld(pos)
     
     # This is only a conservative estimate, so we move the camera "back"
     # to make sure we don't miss blocks behind us
     camX -= lookX
     camY -= lookY
     camZ -= lookZ
-    
+
     dot = lookX * (blockX - camX) + lookY * (blockY - camY) + lookZ * (blockZ - camZ)
-    
+
     return dot >= 0
 
 # render instance function
 def renderInstances(app, canvas):
     faces = drawToFaces(app)
 
-    zCoord = lambda d : -(d[0][d[1][0]][2] + d[0][d[1][1]][2] + d[0][d[1][2]][2])
+    zCoord = lambda d: -(d[0][d[1][0]][2] + d[0][d[1][1]][2] + d[0][d[1][2]][2])
 
     faces.sort(key=zCoord)
 
@@ -440,7 +434,7 @@ def renderInstances(app, canvas):
 
 # get the faces that need to be drawn and are within the render distance set in app
 def drawToFaces(app):
-    toCamMat = wsToCamMat(app.camPos, app.camYaw, app.camPitch)
+    toCamMat = wsToCamMat(app.cameraPos, app.cameraYaw, app.cameraPitch)
     faces = []
     for chunkPos in app.chunks:
         chunk = app.chunks[chunkPos]
@@ -452,12 +446,12 @@ def drawToFaces(app):
                         wx = chunk.pos[0] * 16 + (i // 256)
                         wy = chunk.pos[1] * 16 + (i // 16) % 16
                         wz = chunk.pos[2] * 16 + (i % 16)
-                        blockPos = BlockPosition(wx, wy, wz)
+                        blockPos = BlockPos(wx, wy, wz)
                         if blockPosIsVisible(app, blockPos):
                             (x, y, z) = blockPos
-                            x -= app.camPos[0]
-                            y -= app.camPos[1]
-                            z -= app.camPos[2]
+                            x -= app.cameraPos[0]
+                            y -= app.cameraPos[1]
+                            z -= app.cameraPos[2]
                             if x**2 + y**2 + z**2 <= app.renderDistanceSq:
                                 faces += cullInstance(app, toCamMat, inst, blockPos)
     return faces
@@ -468,7 +462,7 @@ def drawToCanvas(app, canvas, faces):
 
     for i in range(len(faces)):
         if type(faces[i][0]) != type((0, 0)):
-            verts = list(map(lambda v : toCartesian(mat @ v), faces[i][0]))
+            verts = list(map(lambda v: toCartesian(mat @ v), faces[i][0]))
             faces[i][0] = (verts, True)
 
         ((vertices, _), face, color) = faces[i]
@@ -476,15 +470,14 @@ def drawToCanvas(app, canvas, faces):
         v0 = vertices[face[0]]
         v1 = vertices[face[1]]
         v2 = vertices[face[2]]
-        
-        # if wireFrame is true, draw the edges of a block face onto canvas
+
         if app.wireframe:
             edges = [(v0, v1), (v0, v2), (v1, v2)]
 
             for (v0, v1) in edges:            
                 canvas.create_line(v0[0], v0[1], v1[0], v1[1], fill=color)
         else:
-            canvas.create_polygon(v0[0], v0[1], v1[0], v1[1], v2[0], v2[1], fill = color)
+            canvas.create_polygon(v0[0], v0[1], v1[0], v1[1], v2[0], v2[1], fill=color)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -507,13 +500,13 @@ def redrawAll(app, canvas):
     xAxis = wsToCanvas(app, np.array([[1.0], [0.0], [0.0]]))
     yAxis = wsToCanvas(app, np.array([[0.0], [1.0], [0.0]]))
     zAxis = wsToCanvas(app, np.array([[0.0], [0.0], [1.0]]))
-    
-    xpoint = wsToCamMat(app.camPos, app.camYaw, app.camPitch) @ toHomogenous(np.array([[1.0], [0.0], [0.0]]))
+
+    xpoint = wsToCamMat(app.cameraPos, app.cameraYaw, app.cameraPitch) @ toHomogenous(np.array([[1.0], [0.0], [0.0]]))
     xpoint = toCartesian(xpoint)
 
-    canvas.create_line(origin[0], origin[1], xAxis[0], xAxis[1], fill = 'red')
-    canvas.create_line(origin[0], origin[1], yAxis[0], yAxis[1], fill = 'green')
-    canvas.create_line(origin[0], origin[1], zAxis[0], zAxis[1], fill = 'blue')
+    canvas.create_line(origin[0], origin[1], xAxis[0], xAxis[1], fill='red')
+    canvas.create_line(origin[0], origin[1], yAxis[0], yAxis[1], fill='green')
+    canvas.create_line(origin[0], origin[1], zAxis[0], zAxis[1], fill='blue')
     
     # cursor
     canvas.create_oval(app.width / 2 - 1, app.height / 2 - 1, app.width / 2 + 1, app.height / 2 + 1)

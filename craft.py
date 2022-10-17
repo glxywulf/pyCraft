@@ -3,7 +3,7 @@ import numpy as np
 import math
 import render
 import world
-from world import Chunk, ChunkPosition
+from world import Chunk, ChunkPos
 from typing import List
 import perlin_noise
 
@@ -74,27 +74,27 @@ def appStarted(app):
     
     # all the chunks
     app.chunks = {
-        ChunkPosition(0, 0, 0) : Chunk(ChunkPosition(0, 0, 0))
+        ChunkPos(0, 0, 0) : Chunk(ChunkPos(0, 0, 0))
     }
     
     # generate the chunk
-    app.chunks[ChunkPosition(0, 0, 0)].generate(app)
+    app.chunks[ChunkPos(0, 0, 0)].generate(app)
     
     # player data and stuff
     app.playerHeight = 1.5
     app.playerWidth = 0.6
     app.playerRadius = app.playerWidth / 2
     app.playerOnGround = False
-    app.playerVelocity = [0.0, 0.0, 0.0]
+    app.playerVel = [0.0, 0.0, 0.0]
     app.playerWalkSpeed = 0.2
     app.selectedBlock = 'air'
     app.gravity = 0.10
-    app.renderDistSq = 6**2
+    app.renderDistanceSq = 6**2
     
     # camera stuffs
-    app.camYaw = 0
-    app.camPitch = 0
-    app.camPos = [4.0, 10.0 + app.playerHeight, 4.0]
+    app.cameraYaw = 0
+    app.cameraPitch = 0
+    app.cameraPos = [4.0, 10.0 + app.playerHeight, 4.0]
     
     # view point informations
     app.vpDist = 0.25
@@ -126,19 +126,19 @@ def appStarted(app):
     app.capMouse = False
     
     # block stuffs
-    app.wireFrame = False
+    app.wireframe = False
     
     # canvas to matrix thing
     app.csToCanvasMat = render.csToCanvasMat(app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
 
 # if window size changes then we need to re-initialize the size of things in the app again
 def sizeChanged(app):
-    app.csToCanvMat = render.csToCanvasMat(app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
+    app.csToCanvasMat = render.csToCanvasMat(app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
 
 # define a couple things that happen when a mouse is pressed
 #? Haven't added the check statements which check for a specific mouse press yet but the idea still there
 def mousePressed(app, event):
-    block = world.lookBlock(app)
+    block = world.lookedAtBlock(app)
     
     if block is not None:
         (position, face) = block
@@ -161,7 +161,7 @@ def mousePressed(app, event):
             elif(face == 'front'):
                 z += 1
             
-            world.addBlock(app, world.BlockPosition(x, y, z), app.selectedBlock)
+            world.addBlock(app, world.BlockPos(x, y, z), app.selectedBlock)
 
 # def what happens when we move the mouse across the screen.
 def mouseMoved(app, event):
@@ -172,14 +172,14 @@ def mouseMoved(app, event):
         xChange = -(event.x - app.prevMouse[0])
         yChange = -(event.y - app.prevMouse[1])
         
-        app.camPitch += (yChange * .01)
+        app.cameraPitch += (yChange * .01)
         
-        if(app.camPitch < (-math.pi / 2 * .95)):
-            app.camPitch = (-math.pi / 2 * .95)
-        elif(app.camPitch > (math.pi / 2 * .95)):
-            app.camPitch > (math.pi / 2 * .95)
+        if(app.cameraPitch < (-math.pi / 2 * .95)):
+            app.cameraPitch = (-math.pi / 2 * .95)
+        elif(app.cameraPitch > (math.pi / 2 * .95)):
+            app.cameraPitch > (math.pi / 2 * .95)
             
-        app.camYaw += (xChange * .01)
+        app.cameraYaw += (xChange * .01)
         
     if app.capMouse:
         x = app.width / 2
@@ -219,7 +219,7 @@ def keyPressed(app, event):
     elif(event.key == 'd'):
         app.d = True
     elif(event.key == 'Space' and app.playerOnGround):
-        app.playerVelocity[1] = .35
+        app.playerVel[1] = .35
     elif(event.key == 'Escape'):
         app.capMouse = not app.capMouse
         

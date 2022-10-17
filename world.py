@@ -7,13 +7,13 @@ from numpy import ndarray
 from typing import NamedTuple, List, Any, Tuple, Optional
 
 # object that represents a chunk's position in terms of the world space
-class ChunkPosition(NamedTuple):
+class ChunkPos(NamedTuple):
     x : int
     y : int
     z : int
 
 # even further specification on block coords in 3d world space
-class BlockPosition(NamedTuple):
+class BlockPos(NamedTuple):
     x : int
     y : int
     z : int
@@ -23,18 +23,18 @@ BlockId = str
 
 # chunk object
 class Chunk:
-    pos : ChunkPosition
-    blocks : ndarray
-    lightLevels : ndarray
-    instances : List[Any]
-    
-    isFinalized : bool = False
-    isTicking : bool = False
-    isVisible : bool = False
+    pos: ChunkPos
+    blocks: ndarray
+    lightLevels: ndarray
+    instances: List[Any]
+
+    isFinalized: bool = False
+    isTicking: bool = False
+    isVisible: bool = False
     
     # constructor, chunk should only have a positional instance variable made up of ChunkPositions
-    def __init__(self, position : ChunkPosition):
-        self.pos = position
+    def __init__(self, pos: ChunkPos):
+        self.pos = pos
     
     # this is going to be the bulk method that generates each block and gives them
     # their id and traits to be interpreted in render
@@ -43,234 +43,232 @@ class Chunk:
         self.lightLevels = np.full((16, 16, 16), 7)
         self.instances = [None] * self.blocks.size
         
-        for x in range(0, 16):
-            for z in range(0, 16):
-                for y in range(0, 8):
-                    self.lightLevels[x, y, z] = 0
-                    bID = 'grass' if (y == 7) else 'stone'
-                    self.setBlock(app, BlockPosition(x, y, z), bID, doUpdateLight = False, doUpdateBuried = False)
+        for xIdx in range(0, 16):
+            for zIdx in range(0, 16):
+                for yIdx in range(0, 8):
+                    self.lightLevels[xIdx, yIdx, zIdx] = 0
+                    blockId = 'grass' if yIdx == 7 else 'stone'
+                    self.setBlock(app, BlockPos(xIdx, yIdx, zIdx), blockId, doUpdateLight = False, doUpdateBuried = False)
     
     # set the visible faces of every single block in every chunk and finalize block face states
     def lightAndOptimize(self, app):
         print(f"Lighting and optimizing chunk at {self.pos}")
-        for xID in range(0, 16):
-            for yID in range(0, 8):
-                for zID in range(0, 16):
-                    self.updateBuriedStateAt(app, BlockPosition(xID, yID, zID))
+        for xIdx in range(0, 16):
+            for yIdx in range(0, 8):
+                for zIdx in range(0, 16):
+                    self.updateBuriedStateAt(app, BlockPos(xIdx, yIdx, zIdx))
         self.isFinalized = True
     
     # make an interable generator object that contains all of the Blocks(specified
     # by position) and their instances.
     def iterInstances(self):
-        if(self.isFinalized and self.isVisible):
+        if self.isFinalized and self.isVisible:
             for (i, instance) in enumerate(self.instances):
                 if instance is not None:
                     wx = self.pos[0] * 16 + (i // 256)
                     wy = self.pos[1] * 16 + (i // 16) % 16
                     wz = self.pos[2] * 16 + (i % 16)
-                    yield (BlockPosition(wx, wy, wz), instance)
+                    yield (BlockPos(wx, wy, wz), instance)
     
     # convert a block coordinate into a UID that specifically denotes a specific block
-    def _coordsToIdx(self, position : BlockPosition) -> int:
+    def _coordsToIdx(self, pos: BlockPos) -> int:
         (xw, yw, zw) = self.blocks.shape
-        (x, y, z) = position
+        (x, y, z) = pos
+        
         return x * yw * zw + y * zw + z
     
     # takes in a block id and converts it back to its coordinate position
-    def _coordsFromIdx(self, id : int) -> BlockPosition:
+    def _coordsFromIdx(self, idx: int) -> BlockPos:
         (x, y, z) = self.blocks.shape
-
-        xID = id // (y + z)
-        yID = (id // z) % y
-        zID = id % z
+        xIdx = idx // (y * z)
+        yIdx = (idx // z) % y
+        zIdx = (idx % z)
         
-        return BlockPosition(xID, yID, zID)
+        return BlockPos(xIdx, yIdx, zIdx)
     
     # returns a block's position with respect to the entire world instead of 
     # just the current chunk
-    def _globalBlockPos(self, blockPos : BlockPosition) -> BlockPosition:
+    def _globalBlockPos(self, blockPos: BlockPos) -> BlockPos:
         (x, y, z) = blockPos
-        
         x += 16 * self.pos[0]
         y += 16 * self.pos[1]
         z += 16 * self.pos[2]
         
-        return BlockPosition(x, y, z)
+        return BlockPos(x, y, z)
     
-    def updateBuriedStateAt(self, app, bp : BlockPosition):
+    def updateBuriedStateAt(self, app, blockPos: BlockPos):
         # get the blocks id which translates to its index in the instance list
-        id = self._coordsToIdx(bp)
+        idx = self._coordsToIdx(blockPos)
         
         # if the blocks instance is None, return to kill the function
-        if(self.instances[id] is None):
+        if self.instances[idx] is None:
             return
         
         # get the specific block position with regards to the world.
-        gloPos = self._globalBlockPos(bp)
+        globalPos = self._globalBlockPos(blockPos)
         
         buried = False
-        for fID in range(0, 12, 2):
+        for faceIdx in range(0, 12, 2):
             # get the coords of the adjacent block in the direction of the face
-            adjPos = adjacentBlockPos(gloPos, fID)
+            adjPos = adjacentBlockPos(globalPos, faceIdx)
             
             # if a block occupies the coord that's adjacent to the block we're checking
             # set the visibleFace attribute of the specific instance to false
             # which basically sets a blocks face to be invisible
             if coordsOccupied(app, adjPos):
-                self.instances[id][0].visibleFaces[fID] = False
-                self.instances[id][0].visibleFaces[fID + 1] = False
+                self.instances[idx][0].visibleFaces[faceIdx] = False
+                self.instances[idx][0].visibleFaces[faceIdx + 1] = False
                 pass
             # if there isn't a block adjacent to a block's face then the block's
             # face should be visible
             else:
-                self.instances[id][0].visibleFaces[fID] = True
-                self.instances[id][0].visibleFaces[fID + 1] = True
+                self.instances[idx][0].visibleFaces[faceIdx] = True
+                self.instances[idx][0].visibleFaces[faceIdx + 1] = True
                 buried = True
         
-        self.instances[id][1] = buried
+        self.instances[idx][1] = buried
     
     # check if a certain coordinate is occupied by a block
-    def coordsOccupied(self, bp : BlockPosition) -> bool:
+    def coordsOccupied(self, pos: BlockPos) -> bool:
         # get the block's coordinate position
-        (x, y, z) = bp
+        (x, y, z) = pos
         
         # check if it's an 'air' block. if not return True since that spot is occupied
         return self.blocks[x, y, z] != 'air'
     
     # initializes the block fully, assigning the block its position, type, instances,
     # light lvls, buried states, i think that's it.
-    # !Working here
-    def setBlock(self, app, bp : BlockPosition, bID : BlockId, doUpdateLight = True, doUpdateBuried = True):
+    def setBlock(self, app, blockPos: BlockPos, id: BlockId, doUpdateLight=True, doUpdateBuried=True):
         # set the block to bID since that's what type it is
-        (x, y, z) = bp
-        self.blocks[x, y, z] = bID
+        (x, y, z) = blockPos
+        self.blocks[x, y, z] = id
         
         # instance index based off of block position
-        id = self._coordsToIdx(bp)
+        idx = self._coordsToIdx(blockPos)
         
         # if the block is going to be an 'air' block then it doesn't need instances
-        if(bID == 'air'):
-            self.instances[id] = None
+        if id == 'air':
+            self.instances[idx] = None
         # otherwise, we set up the instances here
         else:
             # set its texture by using app's texture dictionary
-            texture = app.textures[bID]
+            texture = app.textures[id]
             
             # get the models x/y/z stuffs
-            [mX, mY, mZ] = blockToWorld(self._globalBlockPos(bp))
+            [modelX, modelY, modelZ] = blockToWorld(self._globalBlockPos(blockPos))
             
             # set the blocks instance in self.instances as a list that contains the Instance object from
             # render file, and a boolean which represents whether or not the block is buried
-            self.instances[id] = [render.Instance(app.cube, np.array([[mX], [mY], [mZ]]), texture), False]
+            self.instances[idx] = [render.Instance(app.cube, np.array([[modelX], [modelY], [modelZ]]), texture), False]
             
             # check if we need to update whether block is buried or not
-            if(doUpdateBuried):
-                self.updateBuriedStateAt(app, bp)
+            if doUpdateBuried:
+                self.updateBuriedStateAt(app, blockPos)
         
         # get global block position
-        gloPos = self._globalBlockPos(bp)
+        globalPos = self._globalBlockPos(blockPos)
         
         # if we need to update light and buried states on a global scale then we
         # update the values
-        if(doUpdateBuried):
-            updateBuriedStateNear(app, gloPos)
+        if doUpdateBuried:
+            updateBuriedStateNear(app, globalPos)
                 
-        if(doUpdateLight):
-            updateLight(app, gloPos)
+        if doUpdateLight:
+            updateLight(app, globalPos)
 
 # * Helper Functions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # accesses the class function inside chunk.
-def updateBuriedStateAt(app, bp : BlockPosition):
-    (chunk, innerPos) = getChunk(app, bp)
+def updateBuriedStateAt(app, pos: BlockPos):
+    (chunk, innerPos) = getChunk(app, pos)
     chunk.updateBuriedStateAt(app, innerPos)
 
 # get the chunk a certain block is in
-def getChunk(app, bp : BlockPosition) -> Tuple[Chunk, BlockPosition]:
+def getChunk(app, pos: BlockPos) -> Tuple[Chunk, BlockPos]:
     # chunk coords are div 16 of the block coords, make it into chunkPos object
-    (chunkX, chunkY, chunkZ) = bp
+    (cx, cy, cz) = pos
     
-    chunkX //= 16
-    chunkY //= 16
-    chunkZ //= 16
-    
-    chunk = app.chunks[ChunkPosition(chunkX, chunkY, chunkZ)]
+    cx //= 16
+    cy //= 16
+    cz //= 16
+
+    chunk = app.chunks[ChunkPos(cx, cy, cz)]
     
     # get the block position with respect to the chunk
-    (x, y, z) = bp
+    [x, y, z] = pos
     x %= 16
     y %= 16
     z %= 16
     
     # return the chunk and blockPos in the chunk
-    return (chunk, BlockPosition(x, y, z))
+    return (chunk, BlockPos(x, y, z))
 
 # helper to get the variables we need for the function inside the Chunk class
-def coordsOccupied(app, bp : BlockPosition) -> bool:
+def coordsOccupied(app, pos: BlockPos) -> bool:
     # if the blockPos is outside of chunk bounds return False
-    if not coordsInBounds(app, bp):
+    if not coordsInBounds(app, pos):
         return False
+
+    (chunk, innerPos) = getChunk(app, pos)
     
-    (chunk, innerBP) = getChunk(app, bp)
-    
-    return chunk.coordsOccupied(innerBP)
+    return chunk.coordsOccupied(innerPos)
 
 # access the setBlock class function of chunk outside of chunk object
-def setBlock(app, bp : BlockPosition, bID : BlockId, doUpdateLight = True) -> None:
-    (chunk, innerBP) = getChunk(app, bp)
-    chunk.setBlock(app, innerBP, bID, doUpdateLight)
+def setBlock(app, pos: BlockPos, id: BlockId, doUpdateLight=True) -> None:
+    (chunk, innerPos) = getChunk(app, pos)
+    chunk.setBlock(app, innerPos, id, doUpdateLight)
     
 # returns the chunk's world position based off of a global block position
-def toChunkLocal(bp : BlockPosition) -> Tuple[ChunkPosition, BlockPosition]:
-    (x, y, z) = bp
+def toChunkLocal(pos: BlockPos) -> Tuple[ChunkPos, BlockPos]:
+    (x, y, z) = pos
     
     # chunk coords should be what ever the xyz is int divided by 16
-    chunkX = x // 16
-    chunkY = y // 16
-    chunkZ = z // 16
+    cx = x // 16
+    cy = y // 16
+    cz = z // 16
     
     # create the ChunkPosition object
-    cPos = ChunkPosition(chunkX, chunkY, chunkZ)
+    chunkPos = ChunkPos(cx, cy, cz)
+
     
     # now we need the block's position with respect to the chunk that it's in
     x %= 16
     y %= 16
     z %= 16
-    
-    newBP = BlockPosition(x, y, z)
-    
-    return (cPos, newBP)
+
+    blockPos = BlockPos(x, y, z)
+
+    return (chunkPos, blockPos)
 
 # figure out if the coords of the block are within the chunk
-def coordsInBounds(app, bp : BlockPosition) -> bool:
-    (chunk, _) = toChunkLocal(bp)
+def coordsInBounds(app, pos: BlockPos) -> bool:
+    (chunkPos, _) = toChunkLocal(pos)
     
-    return chunk in app.chunks
+    return chunkPos in app.chunks
 
 # returns integer value of the closest block in a certain axis 
 # (i.e. x: 14.2345 -> 14; y: 1.235 -> 1)
-def nearestBlockCoord(coord : float) -> int:
+def nearestBlockCoord(coord: float) -> int:
     return round(coord)
 
 # reuturns the coordinate of the nearest block
-def nearestBlockPos(x : float, y : float, z : float) -> BlockPosition:
-    bX : int = nearestBlockCoord(x)
-    bY : int = nearestBlockCoord(y)
-    bZ : int = nearestBlockCoord(z)
-    return BlockPosition(bX, bY, bZ)
+def nearestBlockPos(x: float, y: float, z: float) -> BlockPos:
+    blockX: int = nearestBlockCoord(x)
+    blockY: int = nearestBlockCoord(y)
+    blockZ: int = nearestBlockCoord(z)
+    return BlockPos(blockX, blockY, blockZ)
 
 # returns the position of the center of a block in relation to the world
-def blockToWorld(bp : BlockPosition) -> Tuple[float, float, float]:
-    (x, y, z) = bp
-    
+def blockToWorld(pos: BlockPos) -> Tuple[float, float, float]:
+    (x, y, z) = pos
     return (x, y, z)
 
 # returns a boolean value that represents whether or not a block is fully buried or not
-def blockIsBuried(app, bp : BlockPosition):
+def blockIsBuried(app, blockPos: BlockPos):
     # if any of the faces of the block isn't adjacent to anything, then block isn't buried
-    for fID in range(0, 12, 2):        
+    for faceIdx in range(0, 12, 2):
         # this checks if its buried
-        if not coordsOccupied(app, adjacentBlockPos(bp, fID)):
+        if not coordsOccupied(app, adjacentBlockPos(blockPos, faceIdx)):
             return False
     
     # all spaces adjacent to block are taken so block is buried
@@ -278,122 +276,116 @@ def blockIsBuried(app, bp : BlockPosition):
 
 # update block buried booleans for blocks that are next to another block if that
 # coord is in a chunk that's stored in app.chunks
-def updateBuriedStateNear(app, bp : BlockPosition):
-    for fID in range(0, 12, 2):
-        adjaPos =  adjacentBlockPos(bp, fID)
-        if coordsInBounds(app, adjaPos):
-            updateBuriedStateAt(app, adjaPos)
+def updateBuriedStateNear(app, blockPos: BlockPos):
+    for faceIdx in range(0, 12, 2):
+        pos = adjacentBlockPos(blockPos, faceIdx)
+        if coordsInBounds(app, pos):
+            updateBuriedStateAt(app, pos)
 
 # will return a generator object full of every chunk adjacent to inputted chunkPos
-def adjacentChunks(cp, dist):
-    for xOffset in range(-dist, dist + 1):
-        for zOffset in range(-dist, dist + 1):
-            if(xOffset == zOffset):
+def adjacentChunks(chunkPos, dist):
+    for xOffset in range(-dist, dist+1):
+        for zOffset in range(-dist, dist+1):
+            if xOffset == 0 and zOffset == 0:
                 continue
-            
-            (x, y, z) = cp
-            
+
+            (x, y, z) = chunkPos
             x += xOffset
             z += zOffset
-            
-            newChunkPos = ChunkPosition(x, y, z)
-            
+
+            newChunkPos = ChunkPos(x, y, z)
             yield newChunkPos
 
 # unload specified chunk at position cp by removing it from app.chunks
 # helper function to unload chunks
-def unloadChunk(app, cp : ChunkPosition):
-    print(f"Unloading chunk at {cp}")
-    app.chunks.pop(cp)
+def unloadChunk(app, pos: ChunkPos):
+    print(f"Unloading chunk at {pos}")
+    app.chunks.pop(pos)
 
 # load chunk by adding new chunk into app.chunks
 # helper function to load chunks
-def loadChunk(app, cp : ChunkPosition):
-    print(f"Loading chunk at {cp}")
-    app.chunks[cp] = Chunk(cp)
-    app.chunks[cp].generate(app)
+def loadChunk(app, pos: ChunkPos):
+    print(f"Loading chunk at {pos}")
+    app.chunks[pos] = Chunk(pos)
+    app.chunks[pos].generate(app)
 
 # mass load and unload all chunks
-def loadUnloadChunk(app):
-    (cp, _) = toChunkLocal(nearestBlockPos(app.camPos[0], app.camPos[1], app.camPos[2]))
-    (x, _, z) = cp
+def loadUnloadChunks(app):
+    (chunkPos, _) = toChunkLocal(nearestBlockPos(app.cameraPos[0], app.cameraPos[1], app.cameraPos[2]))
+    (x, _, z) = chunkPos
     
     shouldUnload = []
     
     # get and put chunks that need to be unloaded into shouldUnload list
-    for unloadCP in app.chunks:
-        (ux, _, uz) = unloadCP
+    for unloadChunkPos in app.chunks:
+        (ux, _, uz) = unloadChunkPos
         dist = max(abs(ux - x), abs(uz - z))
-
+        
         # unload chunk
-        if(dist > 2):
-            shouldUnload.append(unloadCP)
+        if dist > 2:
+            shouldUnload.append(unloadChunkPos)
     
     # once done getting chunks to unload, unload them all
-    for unloadCP in shouldUnload:
-        unloadChunk(app, unloadCP)
-        
+    for unloadChunkPos in shouldUnload:
+        unloadChunk(app, unloadChunkPos)
+            
     loadedChunks = 0
-    
-    for loadCP in adjacentChunks(cp, 2):
-        if(loadCP not in app.chunks):
-            (ux, _, uz) = unloadCP
+
+    for loadChunkPos in adjacentChunks(chunkPos, 2):
+        if loadChunkPos not in app.chunks:
+            (ux, _, uz) = loadChunkPos
             dist = max(abs(ux - x), abs(uz - z))
-            
-            urgent = (dist <= 1)
-            
-            if (urgent or (loadedChunks < 1)):
+
+            urgent = dist <= 1
+
+            if urgent or (loadedChunks < 1):
                 loadedChunks += 1
-                loadChunk(app, loadCP)
+                loadChunk(app, loadChunkPos)
 
 # return the number of loaded adjacent chunks
-def countLoadedAdjacentChunks(app, cp : ChunkPosition, dist : int) -> int:
+def countLoadedAdjacentChunks(app, chunkPos: ChunkPos, dist: int) -> int:
     count = 0
-    
-    for pos in adjacentChunks(cp, dist):
-        if(pos in app.chunks):
+    for pos in adjacentChunks(chunkPos, dist):
+        if pos in app.chunks:
             count += 1
-            
+    
     return count
 
 # light and optimize chunk if chunk is finalized and its next to 8 chunks
 def tickChunks(app):
-    for cp in app.chunks:
-        chunk = app.chunks[cp]
-        adjaChunks = countLoadedAdjacentChunks(app, cp, 1)
-        
-        if not (chunk.isFinalized and adjaChunks != 8):
+    for chunkPos in app.chunks:
+        chunk = app.chunks[chunkPos]
+        adjacentChunks = countLoadedAdjacentChunks(app, chunkPos, 1)
+        if not chunk.isFinalized and adjacentChunks == 8:
             chunk.lightAndOptimize(app)
             
-        chunk.isVisible = (adjaChunks == 8)
-        chunk.isTicking = (adjaChunks == 8)
+        chunk.isVisible = adjacentChunks == 8
+        chunk.isTicking = adjacentChunks == 8
         
 # Ticking is done in stages so that collision detection works as expected:
 # First we update the player's Y position and resolve Y collisions,
 # then we update the player's X position and resolve X collisions,
 # and finally update the player's Z position and resolve Z collisions.
 def tick(app):
-    loadUnloadChunk(app)
-    
+    loadUnloadChunks(app)
+
     tickChunks(app)
     
-    app.camPos[1] += app.playerVelocity[1]
+    app.cameraPos[1] += app.playerVel[1]
     
-    if(app.playerOnGround):
-        if not(hasBlockBeneath(app)):
+    if app.playerOnGround:
+        if not hasBlockBeneath(app):
             app.playerOnGround = False
-        else:
-            app.playerVelocity[1] = -app.gravity
-            [_, yP, _] = app.camPos
-            
-            yP -= app.playerHeight
-            yP -= .1
-            feetPos = round(yP)
-            
-            if(hasBlockBeneath(app)):
-                app.playerOnGround = True
-                app.playerVelocity[1] = 0
-                app.camPos[1] = (feetPos + .5) + app.playerHeight
+    else:
+        app.playerVel[1] -= app.gravity
+        [_, yPos, _] = app.cameraPos
+        yPos -= app.playerHeight
+        yPos -= 0.1
+        feetPos = round(yPos)
+        if hasBlockBeneath(app):
+            app.playerOnGround = True
+            app.playerVel[1] = 0.0
+            app.cameraPos[1] = (feetPos + 0.5) + app.playerHeight
     
     # W makes the player go forward, S makes them go backwards,
     # and pressing both makes them stop!
@@ -401,233 +393,233 @@ def tick(app):
     # Likewise for side to side movement
     x = float(app.d) - float(app.a)
     
-    if(x != 0 or z != 0):
-        mag = math.sqrt(x * x + z * z)
+    if x != 0.0 or z != 0.0:
+        mag = math.sqrt(x*x + z*z)
         x /= mag
         z /= mag
-        
-        newX = math.cos(app.camYaw) * x - math.sin(app.camYaw) * z
-        newZ = math.sin(app.camYaw) * x + math.cos(app.camYaw) * z
-        
+
+        newX = math.cos(app.cameraYaw) * x - math.sin(app.cameraYaw) * z
+        newZ = math.sin(app.cameraYaw) * x + math.cos(app.cameraYaw) * z
+
         x, z = newX, newZ
-        
-        x *= app.playerWalkSpeed
+
+        x *= app.playerWalkSpeed 
         z *= app.playerWalkSpeed
-        
+
     xVel = x
     zVel = z
-    
-    minY = round((app.camPos[1] - app.playerHeight + 0.1))
-    maxY = round((app.camPos[1]))
+
+    minY = round((app.cameraPos[1] - app.playerHeight + 0.1))
+    maxY = round((app.cameraPos[1]))
     
     # check for x axis collisions and respond appropriately
-    app.camPos[0] += xVel
+    app.cameraPos[0] += xVel
     
     for y in range(minY, maxY):
-        for z in [app.camPos[2] - app.playerRadius * 0.99, app.camPos[2] + app.playerRadius * 0.99]:
-            x = app.camPos[0]
+        for z in [app.cameraPos[2] - app.playerRadius * 0.99, app.cameraPos[2] + app.playerRadius * 0.99]:
+            x = app.cameraPos[0]
+
+            hiXBlockCoord = round((x + app.playerRadius))
+            loXBlockCoord = round((x - app.playerRadius))
             
-            hiXCoord = round((x + app.playerRadius))
-            loXCoord = round((x - app.playerRadius))
+            # Collision on the right, so move to the left
+            if coordsOccupied(app, BlockPos(hiXBlockCoord, y, round(z))):
+                xEdge = (hiXBlockCoord - 0.5)
+                app.cameraPos[0] = xEdge - app.playerRadius
             
-            # if collision on right, move player back left
-            if(coordsOccupied(app, BlockPosition(hiXCoord, y, round(z)))):
-                xEdge = (hiXCoord - .5)
-                app.camPos[0] = xEdge - app.playerRadius
-            
-            # if collision on left, move player back right
-            elif(coordsOccupied(app, BlockPosition(loXCoord, y, round(z)))):
-                xEdge = (loXCoord + .5)
-                app.camPos[0] = xEdge + app.playerRadius
+            # Collision on the left, so move to the right
+            elif coordsOccupied(app, BlockPos(loXBlockCoord, y, round(z))):
+                xEdge = (loXBlockCoord + 0.5)
+                app.cameraPos[0] = xEdge + app.playerRadius
     
     # now we're gonna do the same thing, except for the z axis stuffs
-    app.camPos[2] += zVel
+    app.cameraPos[2] += zVel
     
     for y in range(minY, maxY):
-        for z in [app.camPos[2] - app.playerRadius * 0.99, app.camPos[2] + app.playerRadius * 0.99]:
-            Z = app.camPos[0]
-            
-            hiZCoord = round((Z + app.playerRadius))
-            loZCoord = round((Z - app.playerRadius))
+        for x in [app.cameraPos[0] - app.playerRadius * 0.99, app.cameraPos[0] + app.playerRadius * 0.99]:
+            z = app.cameraPos[2]
+
+            hiZBlockCoord = round((z + app.playerRadius))
+            loZBlockCoord = round((z - app.playerRadius))
             
             # if collision on behind, move player back forward
-            if(coordsOccupied(app, BlockPosition(hiZCoord, y, round(z)))):
-                ZEdge = (hiZCoord - .5)
-                app.camPos[0] = ZEdge - app.playerRadius
+            if coordsOccupied(app, BlockPos(round(x), y, hiZBlockCoord)):
+                zEdge = (hiZBlockCoord - 0.5)
+                app.cameraPos[2] = zEdge - app.playerRadius
             
             # if collision on front, move player back backword
-            elif(coordsOccupied(app, BlockPosition(loZCoord, y, round(z)))):
-                ZEdge = (loZCoord + .5)
-                app.camPos[0] = ZEdge + app.playerRadius
+            elif coordsOccupied(app, BlockPos(round(x), y, loZBlockCoord)):
+                zEdge = (loZBlockCoord + 0.5)
+                app.cameraPos[2] = zEdge + app.playerRadius
 
 # access chunk object at specified position and set it's lightlvl to inputted lvl
-def setLightLevel(app, bp : BlockPosition, lvl : int):
-    (chunk, (x, y, z)) = getChunk(app, bp)
-    chunk.lightLevels[x, y, z] = lvl
+def setLightLevel(app, blockPos: BlockPos, level: int):
+    (chunk, (x, y, z)) = getChunk(app, blockPos)
+    chunk.lightLevels[x, y, z] = level
 
 # update light levels for blocks
-def updateLight(app, bp : BlockPosition):
+def updateLight(app, blockPos: BlockPos):
     # FIXME: Will be changed later since it bugs out a bit. Doesn't quite propogate
     # over chunk boundaries without making it much much slower
 
     # get the chunk that we're in and initialize the lightlvls list attribute of the chunk
-    (chunk, bp) = getChunk(app, bp)
+    (chunk, blockPos) = getChunk(app, blockPos)
     chunk.lightLevels = np.full_like(chunk.blocks, 0, int)
     
     # get the shape of chunk.blocks
     shape = chunk.blocks.shape
     
     # keep a list of updated light stuff and blocks that are queueed up to be updated
-    done = []
+    visited = []
     queue = []
     
     # put the blocks into queue in heap order
     for x in range(shape[0]):
         for z in range(shape[2]):
             y = shape[1] - 1
-            heapq.heappush(queue, (-7, BlockPosition(x, y, z)))
+            heapq.heappush(queue, (-7, BlockPos(x, y, z)))
     
     # while the queue still has blocks waiting in it
-    while (len(queue) > 0):
+    while len(queue) > 0:
         (light, pos) = heapq.heappop(queue)
         light *= -1
         
         # if we've seen the position before then ignore it and continue with the next block
-        if(pos in done):
+        if pos in visited:
             continue
         
         # if we haven't seen it, append it into done list
-        done.append(pos)
+        visited.append(pos)
         
         # get the block postion and set the lightlvl in the same position to the light lvl
         (x, y, z) = pos
         chunk.lightLevels[x, y, z] = light
-        
-        for fID in range(0, 12, 2):
-            nP = adjacentBlockPos(pos, fID)
-            gP = chunk._globalBlockPos(nP)
+
+        for faceIdx in range(0, 10, 2):
+            nextPos = adjacentBlockPos(pos, faceIdx)
+            globalPos = chunk._globalBlockPos(nextPos)
             
             # if the next block position is out of bounds or occupied or out of chunk
             # just ignore it and keep its lightlvl the same
-            if(nP in done):
+            if nextPos in visited:
                 continue
-            if not coordsInBounds(app, gP):
+            if not coordsInBounds(app, globalPos):
                 continue
-            if coordsOccupied(app, gP):
+            if coordsOccupied(app, globalPos):
                 continue
-            if(nP[0] < 0 or 16 <= nP[0]):
+            if nextPos[0] < 0 or 16 <= nextPos[0]:
                 continue
-            if(nP[1] < 0 or 16 <= nP[1]):
+            if nextPos[1] < 0 or 16 <= nextPos[1]:
                 continue
-            if(nP[2] < 0 or 16 <= nP[2]):
+            if nextPos[2] < 0 or 16 <= nextPos[2]:
                 continue
             
             # if it passes all of those checks, check if light is 7 and the face
             # that we're checking that's 7 is the top face. set lights next to it to 7
-            if(light == 7 and fID == 8):
-                nLight = 7
+            if light == 7 and faceIdx == 8:
+                nextLight = 7
             
             # otherwise, next light lvl should be the max of light - 1 and 0
             else:
-                nLight = max(light - 1, 0)
+                nextLight = max(light - 1, 0)
             
             # push the next light and next position into the queue
-            heapq.heappush(queue, (-nLight, nP))
+            heapq.heappush(queue, (-nextLight, nextPos))
         
 # remove blocks from the world and replace with 'air' block
-def removeBlock(app, bp : BlockPosition):
-    setBlock(app, bp, 'air')
+def removeBlock(app, blockPos: BlockPos):
+    setBlock(app, blockPos, 'air')
 
 # set block function that'll place blocks
-def addBlock(app, bp : BlockPosition, bID : BlockId):
-    setBlock(app, bp, bID)
+def addBlock(app, blockPos: BlockPos, id: BlockId):
+    setBlock(app, blockPos, id)
 
 # check if player has block beneath them or not. returns boolean
 def hasBlockBeneath(app):
-    xP, yP, zP = app.camPos
-    yP -= app.playerHeight
-    yP -= .1
-    
-    for x in [xP - app.playerRadius * 0.99, xP + app.playerRadius * 0.99]:
-        for z in [zP - app.playerRadius * 0.99, zP + app.playerRadius * 0.99]:
-            feetPos = nearestBlockPos(x, yP, z)
-            if(coordsOccupied(app, feetPos)):
+    [xPos, yPos, zPos] = app.cameraPos
+    yPos -= app.playerHeight
+    yPos -= 0.1
+
+    for x in [xPos - app.playerRadius * 0.99, xPos + app.playerRadius * 0.99]:
+        for z in [zPos - app.playerRadius * 0.99, zPos + app.playerRadius * 0.99]:
+            feetPos = nearestBlockPos(x, yPos, z)
+            if coordsOccupied(app, feetPos):
                 return True
-            
+
     return False
 
 # returning the position of the block that is next to the original block
 # that is touching the face that was inputted
-def adjacentBlockPos(bP : BlockPosition, fID : int) -> BlockPosition:
+def adjacentBlockPos(blockPos: BlockPos, faceIdx: int) -> BlockPos:
     # get the blocks position in a list
-    [x, y, z] = bP
+    [x, y, z] = blockPos
     
     # turns whatever fID is into half of what it was so that it's a value within
     # the index of the list below
-    fID //= 2
+    faceIdx //= 2
     
     # Left, right, front, back, bottom, top
-    (a, b, c) = [(-1, 0, 0), (1, 0, 0), (0, 0, -1), (0, 0, 1), (0, -1, 0), (0, 1, 0)][fID]
+    (a, b, c) = [(-1, 0, 0), (1, 0, 0), (0, 0, -1), (0, 0, 1), (0, -1, 0), (0, 1, 0)][faceIdx]
     
     # the original coords + the face tuples translate the coords to be the coords
     # of the block that is adjacent in the direction of the inputted face
     x += a
     y += b
     z += c
-    
-    return BlockPosition(x, y, z)
+
+    return BlockPos(x, y, z)
 
 # * needs to be optimized later too
 # returns a tuple containing the block position of a block we're looking at
 # and which face we're looking at
-def lookBlock(app) -> Optional[Tuple[BlockPosition, str]]:
-    lookX = cos(app.camPitch) * sin(-app.camYaw)
-    lookY = sin(app.camPitch)
-    lookZ = cos(app.camPitch) * cos(-app.camYaw)
+def lookedAtBlock(app) -> Optional[Tuple[BlockPos, str]]:
+    lookX = cos(app.cameraPitch)*sin(-app.cameraYaw)
+    lookY = sin(app.cameraPitch)
+    lookZ = cos(app.cameraPitch)*cos(-app.cameraYaw)
     
     # magnification thing
-    mag = math.sqrt(lookX ** 2 + lookY ** 2 + lookZ ** 2)
+    mag = math.sqrt(lookX**2 + lookY**2 + lookZ**2)
     lookX /= mag
     lookY /= mag
     lookZ /= mag
-    
-    step = .1
+
+    step = 0.1
     lookX *= step
     lookY *= step
     lookZ *= step
-    
-    [x, y, z] = app.camPos
-    
+
+    [x, y, z] = app.cameraPos
+
     maxDist = 6.0
-    
-    bp = None
+
+    blockPos = None
     
     for _ in range(int(maxDist / step)):
         x += lookX
         y += lookY
         z += lookZ
-        
-        tempBP = nearestBlockPos(x, y, z)
-        
-        if(coordsOccupied(app, tempBP)):
-            bp = tempBP
+
+        tempBlockPos = nearestBlockPos(x, y, z)
+
+        if coordsOccupied(app, tempBlockPos):
+            blockPos = tempBlockPos
             break
-        
-    if(bp is None):
+
+    if blockPos is None:
         return None
+
+    [centerX, centerY, centerZ] = blockPos
     
-    [cx, cy, cz] = bp
-    
-    x -= cx
-    y -= cy
-    z -= cz
-    
-    if(abs(x) > abs(y) and abs(x) > abs(z)):
+    x -= centerX
+    y -= centerY
+    z -= centerZ
+
+    if abs(x) > abs(y) and abs(x) > abs(z):
         face = 'right' if x > 0.0 else 'left'
-    elif(abs(y) > abs(x) and abs(y) > abs(z)):
+    elif abs(y) > abs(x) and abs(y) > abs(z):
         face = 'top' if y > 0.0 else 'bottom'
     else:
         face = 'front' if z > 0.0 else 'back'
 
-    return (bp, face)
+    return (blockPos, face)
     
