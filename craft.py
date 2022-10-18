@@ -8,6 +8,72 @@ from typing import List
 import perlin_noise
 
 def appStarted(app):
+    loadResources(app)
+    
+    # * World Variables and stuff~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # all the chunks
+    app.chunks = {
+        ChunkPos(0, 0, 0) : Chunk(ChunkPos(0, 0, 0))
+    }
+    
+    # generate the chunk
+    app.chunks[ChunkPos(0, 0, 0)].generate(app)
+    
+    app.timerDelay = 30
+    
+    app.tickTimes = [0.0] * 10
+    app.tickTimeIdx = 0
+    
+    # * Player variables and stuff~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # player data and stuff
+    app.playerHeight = 1.5
+    app.playerWidth = 0.6
+    app.playerRadius = app.playerWidth / 2
+    app.playerOnGround = False
+    app.playerVel = [0.0, 0.0, 0.0]
+    app.playerWalkSpeed = 0.2
+    app.selectedBlock = 'air'
+    app.gravity = 0.10
+    
+    # camera stuffs
+    app.cameraYaw = 0
+    app.cameraPitch = 0
+    app.cameraPos = [4.0, 10.0 + app.playerHeight, 4.0]
+    
+    # * Rendering variables and stuff~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # view point informations
+    app.vpDist = 0.25
+    app.vpWidth = 3.0 / 4.0
+    app.vpHeight = app.vpWidth * app.height / app.width
+    app.wireframe = False
+    app.renderDistanceSq = 6 ** 2
+    
+    # field of view values
+    app.horiFOV = math.atan(app.vpWidth / app.vpDist)
+    app.vertFOV = math.atan(app.vpHeight / app.vpDist)
+    
+    print(f"Horizontal FOV : {app.horiFOV} ({math.degrees(app.horiFOV)}°)")
+    print(f"Vertical FOV : {app.vertFOV} ({math.degrees(app.vertFOV)}°)")
+    
+    # canvas to matrix thing
+    app.csToCanvasMat = render.csToCanvasMat(app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
+    
+    # * Input variables and stuff~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # mouse stuffs
+    app.mouseMovedDelay = 10
+    
+    # directional key inputs
+    app.w = False
+    app.a = False
+    app.s = False
+    app.d = False
+    
+    app.prevMouse = None
+    
+    app.capMouse = False
+    
+
+def loadResources(app):
     # vertices
     vertices = [
         np.array([[-1], [-1], [-1]]) / 2,
@@ -66,70 +132,8 @@ def appStarted(app):
         (3, 6, 7),
     ]
     
-    # terrain variation scale
-    app.lowNoise = perlin_noise.PerlinNoise(octaves = 3)
-    
     # block models stuffs
     app.cube = render.Model(vertices, faces)
-    
-    # all the chunks
-    app.chunks = {
-        ChunkPos(0, 0, 0) : Chunk(ChunkPos(0, 0, 0))
-    }
-    
-    # generate the chunk
-    app.chunks[ChunkPos(0, 0, 0)].generate(app)
-    
-    # player data and stuff
-    app.playerHeight = 1.5
-    app.playerWidth = 0.6
-    app.playerRadius = app.playerWidth / 2
-    app.playerOnGround = False
-    app.playerVel = [0.0, 0.0, 0.0]
-    app.playerWalkSpeed = 0.2
-    app.selectedBlock = 'air'
-    app.gravity = 0.10
-    app.renderDistanceSq = 6**2
-    
-    # camera stuffs
-    app.cameraYaw = 0
-    app.cameraPitch = 0
-    app.cameraPos = [4.0, 10.0 + app.playerHeight, 4.0]
-    
-    # view point informations
-    app.vpDist = 0.25
-    app.vpWidth = 3.0 / 4.0
-    app.vpHeight = app.vpWidth * app.height / app.width
-    
-    # field of view values
-    app.horiFOV = math.atan(app.vpWidth / app.vpDist)
-    app.vertFOV = math.atan(app.vpHeight / app.vpDist)
-    
-    print(f"Horizontal FOV : {app.horiFOV} ({math.degrees(app.horiFOV)}°)")
-    
-    app.timerDelay = 50
-    
-    app.tickTimes = [0.0] * 10
-    app.tickTimeId = 0
-    
-    # directional key inputs
-    app.w = False
-    app.a = False
-    app.s = False
-    app.d = False
-    
-    # mouse stuffs
-    app.mouseMovedDelay = 10
-    
-    app.prevMouse = None
-    
-    app.capMouse = False
-    
-    # block stuffs
-    app.wireframe = False
-    
-    # canvas to matrix thing
-    app.csToCanvasMat = render.csToCanvasMat(app.vpDist, app.vpWidth, app.vpHeight, app.width, app.height)
 
 # if window size changes then we need to re-initialize the size of things in the app again
 def sizeChanged(app):
@@ -162,9 +166,15 @@ def mousePressed(app, event):
                 z += 1
             
             world.addBlock(app, world.BlockPos(x, y, z), app.selectedBlock)
+            
+def mouseDragged(app, event):
+    mouseMovedOrDragged(app, event)
 
 # def what happens when we move the mouse across the screen.
 def mouseMoved(app, event):
+    mouseMovedOrDragged(app, event)
+    
+def mouseMovedOrDragged(app, event):
     if not app.capMouse:
         app.prevMouse = None
     
@@ -186,17 +196,6 @@ def mouseMoved(app, event):
         y = app.height / 2
         app._theRoot.event_generate('<Motion>',  warp = True, x = x, y = y)
         app.prevMouse = (x, y)
-
-# define what happens when certain keys are released
-def keyReleased(app, event):
-    if(event.key == 'w'):
-        app.w = False
-    elif(event.key == 's'):
-        app.s = False
-    elif(event.key == 'a'):
-        app.a = False
-    elif(event.key == 'd'):
-        app.d = False
 
 # essentially the update function will call every app.timerDelay milliseconds
 def timerFired(app):
@@ -228,6 +227,18 @@ def keyPressed(app, event):
         else:
             app._theRoot.config(cursor = "")
 
+# define what happens when certain keys are released
+def keyReleased(app, event):
+    if(event.key == 'w'):
+        app.w = False
+    elif(event.key == 's'):
+        app.s = False
+    elif(event.key == 'a'):
+        app.a = False
+    elif(event.key == 'd'):
+        app.d = False
+
+# call the draw function
 def redrawAll(app, canvas):
     render.redrawAll(app, canvas)
     

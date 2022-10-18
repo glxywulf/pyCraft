@@ -2,6 +2,7 @@ import numpy as np
 import math
 import heapq
 import render
+import time
 from math import cos, sin
 from numpy import ndarray
 from typing import NamedTuple, List, Any, Tuple, Optional
@@ -367,6 +368,8 @@ def tickChunks(app):
 # then we update the player's X position and resolve X collisions,
 # and finally update the player's Z position and resolve Z collisions.
 def tick(app):
+    startTime = time.time()
+    
     loadUnloadChunks(app)
 
     tickChunks(app)
@@ -451,6 +454,12 @@ def tick(app):
             elif coordsOccupied(app, BlockPos(round(x), y, loZBlockCoord)):
                 zEdge = (loZBlockCoord + 0.5)
                 app.cameraPos[2] = zEdge + app.playerRadius
+    
+    endTime = time.time()
+    
+    app.tickTimes[app.tickTimeIdx] = (endTime - startTime)
+    app.tickTimeIdx += 1
+    app.tickTimeIdx %= len(app.tickTimes)
 
 # access chunk object at specified position and set it's lightlvl to inputted lvl
 def setLightLevel(app, blockPos: BlockPos, level: int):
@@ -462,9 +471,10 @@ def updateLight(app, blockPos: BlockPos):
     # FIXME: Will be changed later since it bugs out a bit. Doesn't quite propogate
     # over chunk boundaries without making it much much slower
 
+    startTime = time.time()
+    
     # get the chunk that we're in and initialize the lightlvls list attribute of the chunk
-    (chunk, blockPos) = getChunk(app, blockPos)
-    chunk.lightLevels = np.full_like(chunk.blocks, 0, int)
+    (chunk, localPos) = getChunk(app, blockPos)
     
     # get the shape of chunk.blocks
     shape = chunk.blocks.shape
@@ -525,6 +535,10 @@ def updateLight(app, blockPos: BlockPos):
             
             # push the next light and next position into the queue
             heapq.heappush(queue, (-nextLight, nextPos))
+            
+    endTime = time.time()
+    timeDiff = (endTime - startTime) * 1000.0
+    print(f"updateLight() took {timeDiff:.3f}ms")
         
 # remove blocks from the world and replace with 'air' block
 def removeBlock(app, blockPos: BlockPos):
