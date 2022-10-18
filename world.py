@@ -58,6 +58,7 @@ class Chunk:
             for yIdx in range(0, 8):
                 for zIdx in range(0, 16):
                     self.updateBuriedStateAt(app, BlockPos(xIdx, yIdx, zIdx))
+                    
         self.isFinalized = True
     
     # make an interable generator object that contains all of the Blocks(specified
@@ -66,9 +67,9 @@ class Chunk:
         if self.isFinalized and self.isVisible:
             for (i, instance) in enumerate(self.instances):
                 if instance is not None:
-                    wx = self.pos[0] * 16 + (i // 256)
-                    wy = self.pos[1] * 16 + (i // 16) % 16
-                    wz = self.pos[2] * 16 + (i % 16)
+                    wx = self.pos.x * 16 + (i // 256)
+                    wy = self.pos.y * 16 + (i // 16) % 16
+                    wz = self.pos.z * 16 + (i % 16)
                     yield (BlockPos(wx, wy, wz), instance)
     
     # convert a block coordinate into a UID that specifically denotes a specific block
@@ -461,11 +462,17 @@ def tick(app):
     app.tickTimeIdx += 1
     app.tickTimeIdx %= len(app.tickTimes)
 
+# returns light level of a block
+def getLightLevel(app, blockPos : BlockPos) -> int:
+    (chunk, (x, y, z)) = getChunk(app, blockPos)
+    return chunk.lightLevels[x, y, z]
+
 # access chunk object at specified position and set it's lightlvl to inputted lvl
 def setLightLevel(app, blockPos: BlockPos, level: int):
     (chunk, (x, y, z)) = getChunk(app, blockPos)
     chunk.lightLevels[x, y, z] = level
 
+# ! Working here
 # update light levels for blocks
 def updateLight(app, blockPos: BlockPos):
     # FIXME: Will be changed later since it bugs out a bit. Doesn't quite propogate

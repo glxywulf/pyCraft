@@ -60,7 +60,7 @@ class Instance:
     
 # turns an inputted array into a ndarray that represents a row in a matrix.
 def toHomogenous(cartesian : ndarray) -> ndarray:
-    assert(cartesian.shape[1] == 1)
+    # assert(cartesian.shape[1] == 1)
     
     return np.array([[cartesian[0, 0]], [cartesian[1, 0]], [cartesian[2, 0]], [1.0]])
 
