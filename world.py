@@ -474,11 +474,96 @@ def setLightLevel(app, blockPos: BlockPos, level: int):
 
 # ! Working here
 # update light levels for blocks
-def updateLight(app, blockPos: BlockPos):
+def updateLight(app, blockPos : BlockPos):
+    startTime = time.time()
+    
+    added = coordsOccupied(app, blockPos)
+    
+    # if a block is added, use the updateLight helper below
+    # This can only ever decrease the light level of a block.
+    if added:
+        naiveUpdateLight(app, blockPos)
+        
+    # if block removed; this will only increase the light level of a block.
+    else:
+        # figure out whether or not a block is exposed to the sky
+        (chunk, localPos) = getChunk(app, blockPos)
+        
+        skyExposed = True
+        for y in range(localPos.y + 1, 16):
+            checkPos = BlockPos(localPos.x, y, localPos.z)
+            if chunk.coordsOccupied(checkPos):
+                skyExposed = False
+                break
+        
+        for y in range(localPos.y + 1, 16):
+            checkPos = BlockPos(localPos.x, y, localPos.z)
+            
+            if(chunk.coordsOccupied(checkPos)):
+                skyExposed = False
+                break
+            
+        print(f"Sky exposed : {skyExposed}")
+        
+        queue = []
+        
+        # FIXME: if vertical chunks ever get added, this changes
+        # if sky is exposed on a block, then push it into the queue list first
+        if skyExposed:
+            for y in range(localPos.y, -1, -1):
+                if coordsOccupied(app, blockPos):
+                    break
+                
+                heapq.heappush(queue, (-7, BlockPos(blockPos.x, y, blockPos.z)))
+        
+        # then shove everything else in
+        for faceIdx in range(0, 12, 2):
+            gPos = adjacentBlockPos(blockPos, faceIdx)
+            
+            lightLevel = getLightLevel(app, gPos)
+            
+            heapq.heappush(queue, (-lightLevel, gPos))
+        
+        # here we assign all the new light level stuffs
+        visited = []
+        
+        while(len(queue) > 0):
+            (light, pos) = heapq.heappop(queue)
+            light *= 1
+            
+            if pos in visited:
+                continue
+            
+            visited.append(pos)
+            setLightLevel(app, pos, light)
+            
+            for faceIdx in range(0, 12, 2):
+                nextPos = adjacentBlockPos(pos, faceIdx)
+                
+                if nextPos in visited:
+                    continue
+                if not coordsInBounds(app, nextPos):
+                    continue
+                if coordsOccupied(app, nextPos):
+                    continue
+                
+                existingLight = getLightLevel(app, nextPos)
+                nextLight = max(light - 1, 0)
+                
+                if(nextLight > existingLight):
+                    heapq.heappush(queue, (-nextLight, nextPos))
+                    
+    endTime = time.time()
+    
+    timeDiff = (endTime - startTime) * 1000.0
+    
+    print(f"updateLight() took {timeDiff:.3f}ms")
+
+def naiveUpdateLight(app, blockPos : BlockPos):
     # FIXME: Will be changed later since it bugs out a bit. Doesn't quite propogate
     # over chunk boundaries without making it much much slower
 
-    startTime = time.time()
+    # startTime = time.time()
     
     # get the chunk that we're in and initialize the lightlvls list attribute of the chunk
     (chunk, localPos) = getChunk(app, blockPos)
@@ -543,9 +628,11 @@ def updateLight(app, blockPos: BlockPos):
             # push the next light and next position into the queue
             heapq.heappush(queue, (-nextLight, nextPos))
             
-    endTime = time.time()
-    timeDiff = (endTime - startTime) * 1000.0
-    print(f"updateLight() took {timeDiff:.3f}ms")
+    # endTime = time.time()
+    
+    # timeDiff = (endTime - startTime) * 1000.0
+    
+    # print(f"updateLight() took {timeDiff:.3f}ms")
         
 # remove blocks from the world and replace with 'air' block
 def removeBlock(app, blockPos: BlockPos):
