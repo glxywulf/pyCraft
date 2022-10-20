@@ -463,7 +463,7 @@ def tick(app):
     app.tickTimeIdx %= len(app.tickTimes)
 
 # returns light level of a block
-def getLightLevel(app, blockPos : BlockPos) -> int:
+def getLightLevel(app, blockPos: BlockPos) -> int:
     (chunk, (x, y, z)) = getChunk(app, blockPos)
     return chunk.lightLevels[x, y, z]
 
@@ -472,137 +472,177 @@ def setLightLevel(app, blockPos: BlockPos, level: int):
     (chunk, (x, y, z)) = getChunk(app, blockPos)
     chunk.lightLevels[x, y, z] = level
 
-# ! Working here
 # update light levels for blocks
-def updateLight(app, blockPos : BlockPos):
+def updateLight(app, blockPos: BlockPos):
     startTime = time.time()
-    
+
     added = coordsOccupied(app, blockPos)
+
+    (chunk, localPos) = getChunk(app, blockPos)
+
+    skyExposed = True
+    for y in range(localPos.y + 1, 16):
+        checkPos = BlockPos(localPos.x, y, localPos.z)
+        if chunk.coordsOccupied(checkPos):
+            skyExposed = False
+            break
+
     
-    # if a block is added, use the updateLight helper below
-    # This can only ever decrease the light level of a block.
     if added:
-        naiveUpdateLight(app, blockPos)
-        
-    # if block removed; this will only increase the light level of a block.
-    else:
-        # figure out whether or not a block is exposed to the sky
-        (chunk, localPos) = getChunk(app, blockPos)
-        
-        skyExposed = True
-        for y in range(localPos.y + 1, 16):
-            checkPos = BlockPos(localPos.x, y, localPos.z)
-            if chunk.coordsOccupied(checkPos):
-                skyExposed = False
-                break
-        
-        for y in range(localPos.y + 1, 16):
-            checkPos = BlockPos(localPos.x, y, localPos.z)
-            
-            if(chunk.coordsOccupied(checkPos)):
-                skyExposed = False
-                break
-            
-        print(f"Sky exposed : {skyExposed}")
-        
-        queue = []
-        
-        # FIXME: if vertical chunks ever get added, this changes
-        # if sky is exposed on a block, then push it into the queue list first
+        # When a block is ADDED:
+        # If the block is directly skylit:
+        # Mark all blocks visibly beneath as ex-sources
+        # Mark every block adjacent to the change as an ex-source
+        # Propogate "negative light" from the ex-sources
+        # Mark any "overpowering" lights as actual sources
+        # Reset all "negative lights" to 0
+        # Propogate from the actual sources
+
+        exSources = []
+
+        # FIXME: If I ever add vertical chunks this needs to change
         if skyExposed:
-            for y in range(localPos.y, -1, -1):
-                if coordsOccupied(app, blockPos):
+            for y in range(localPos.y - 1, -1, -1):
+                checkPos = BlockPos(localPos.x, y, localPos.z)
+                if chunk.coordsOccupied(checkPos):
                     break
-                
-                heapq.heappush(queue, (-7, BlockPos(blockPos.x, y, blockPos.z)))
-        
-        # then shove everything else in
+
+                heapq.heappush(exSources, (-7, BlockPos(blockPos.x, y, blockPos.z)))
+
         for faceIdx in range(0, 12, 2):
             gPos = adjacentBlockPos(blockPos, faceIdx)
-            
-            lightLevel = getLightLevel(app, gPos)
-            
-            heapq.heappush(queue, (-lightLevel, gPos))
-        
-        # here we assign all the new light level stuffs
-        visited = []
-        
-        while(len(queue) > 0):
-            (light, pos) = heapq.heappop(queue)
-            light *= 1
-            
-            if pos in visited:
+
+            if coordsOccupied(app, gPos):
                 continue
-            
-            visited.append(pos)
-            setLightLevel(app, pos, light)
-            
+
+            lightLevel = getLightLevel(app, gPos)
+
+            heapq.heappush(exSources, (-lightLevel, gPos))
+
+        exVisited = []
+
+        queue = []
+
+        while len(exSources) > 0:
+            (neglight, pos) = heapq.heappop(exSources)
+            neglight *= -1
+            if pos in exVisited:
+                continue
+            exVisited.append(pos)
+
+            existingLight = getLightLevel(app, pos)
+            if existingLight > neglight:
+                heapq.heappush(queue, (-existingLight, pos))
+                continue
+
+            setLightLevel(app, pos, 0)
+
+            nextLight = max(neglight - 1, 0)
             for faceIdx in range(0, 12, 2):
                 nextPos = adjacentBlockPos(pos, faceIdx)
-                
-                if nextPos in visited:
+                if nextPos in exVisited:
                     continue
                 if not coordsInBounds(app, nextPos):
                     continue
                 if coordsOccupied(app, nextPos):
                     continue
                 
+# ! Working here
+                
+        
+    else:
+        # When a block is REMOVED:
+        # Note that this can only ever *increase* the light level of a block! So:
+        # If the block is directly skylit:
+        #   Propogate light downwards
+        #   Add every block visibly beneath the change to the queue
+        # 
+        # Add every block adjacent to the change to the queue
+
+
+        (chunk, localPos) = getChunk(app, blockPos)
+
+        skyExposed = True
+        for y in range(localPos.y + 1, 16):
+            checkPos = BlockPos(localPos.x, y, localPos.z)
+            if chunk.coordsOccupied(checkPos):
+                skyExposed = False
+                break
+
+        print(f"Sky exposed: {skyExposed}")
+
+        queue = []
+
+        # FIXME: If I ever add vertical chunks this needs to change
+        if skyExposed:
+            for y in range(localPos.y, -1, -1):
+                if coordsOccupied(app, blockPos):
+                    break
+
+                heapq.heappush(queue, (-7, BlockPos(blockPos.x, y, blockPos.z)))
+
+        for faceIdx in range(0, 12, 2):
+            gPos = adjacentBlockPos(blockPos, faceIdx)
+
+            lightLevel = getLightLevel(app, gPos)
+
+            heapq.heappush(queue, (-lightLevel, gPos))
+
+        visited = []
+
+        while len(queue) > 0:
+            (light, pos) = heapq.heappop(queue)
+            light *= -1
+            if pos in visited:
+                continue
+            visited.append(pos)
+            setLightLevel(app, pos, light)
+
+            for faceIdx in range(0, 12, 2):
+                nextPos = adjacentBlockPos(pos, faceIdx)
+                if nextPos in visited:
+                    continue
+                if not coordsInBounds(app, nextPos):
+                    continue
+                if coordsOccupied(app, nextPos):
+                    continue
+
                 existingLight = getLightLevel(app, nextPos)
                 nextLight = max(light - 1, 0)
-                
-                if(nextLight > existingLight):
+
+                if nextLight > existingLight:
                     heapq.heappush(queue, (-nextLight, nextPos))
-                    
+
     endTime = time.time()
-    
+
     timeDiff = (endTime - startTime) * 1000.0
-    
+
     print(f"updateLight() took {timeDiff:.3f}ms")
 
-def naiveUpdateLight(app, blockPos : BlockPos):
-    # FIXME: Will be changed later since it bugs out a bit. Doesn't quite propogate
-    # over chunk boundaries without making it much much slower
-
-    # startTime = time.time()
-    
-    # get the chunk that we're in and initialize the lightlvls list attribute of the chunk
+# FIXME: This is super broken
+def naiveUpdateLight(app, blockPos: BlockPos):
     (chunk, localPos) = getChunk(app, blockPos)
-    
-    # get the shape of chunk.blocks
+
     shape = chunk.blocks.shape
-    
-    # keep a list of updated light stuff and blocks that are queueed up to be updated
     visited = []
     queue = []
-    
-    # put the blocks into queue in heap order
     for x in range(shape[0]):
         for z in range(shape[2]):
             y = shape[1] - 1
             heapq.heappush(queue, (-7, BlockPos(x, y, z)))
     
-    # while the queue still has blocks waiting in it
     while len(queue) > 0:
         (light, pos) = heapq.heappop(queue)
         light *= -1
-        
-        # if we've seen the position before then ignore it and continue with the next block
         if pos in visited:
             continue
-        
-        # if we haven't seen it, append it into done list
         visited.append(pos)
-        
-        # get the block postion and set the lightlvl in the same position to the light lvl
+        #setLightLevel(app, pos, light)
         (x, y, z) = pos
         chunk.lightLevels[x, y, z] = light
-
         for faceIdx in range(0, 10, 2):
             nextPos = adjacentBlockPos(pos, faceIdx)
             globalPos = chunk._globalBlockPos(nextPos)
-            
-            # if the next block position is out of bounds or occupied or out of chunk
-            # just ignore it and keep its lightlvl the same
             if nextPos in visited:
                 continue
             if not coordsInBounds(app, globalPos):
@@ -615,24 +655,12 @@ def naiveUpdateLight(app, blockPos : BlockPos):
                 continue
             if nextPos[2] < 0 or 16 <= nextPos[2]:
                 continue
-            
-            # if it passes all of those checks, check if light is 7 and the face
-            # that we're checking that's 7 is the top face. set lights next to it to 7
             if light == 7 and faceIdx == 8:
                 nextLight = 7
-            
-            # otherwise, next light lvl should be the max of light - 1 and 0
             else:
                 nextLight = max(light - 1, 0)
-            
-            # push the next light and next position into the queue
+
             heapq.heappush(queue, (-nextLight, nextPos))
-            
-    # endTime = time.time()
-    
-    # timeDiff = (endTime - startTime) * 1000.0
-    
-    # print(f"updateLight() took {timeDiff:.3f}ms")
         
 # remove blocks from the world and replace with 'air' block
 def removeBlock(app, blockPos: BlockPos):
