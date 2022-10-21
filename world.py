@@ -472,10 +472,8 @@ def setLightLevel(app, blockPos: BlockPos, level: int):
     (chunk, (x, y, z)) = getChunk(app, blockPos)
     chunk.lightLevels[x, y, z] = level
 
-# update light levels for blocks
+# update light levels for the entire rendered world
 def updateLight(app, blockPos: BlockPos):
-    startTime = time.time()
-
     added = coordsOccupied(app, blockPos)
 
     (chunk, localPos) = getChunk(app, blockPos)
@@ -488,15 +486,15 @@ def updateLight(app, blockPos: BlockPos):
             break
 
     
+    # When a block is ADDED:
+    # If the block is directly skylit:
+    # Mark all blocks visibly beneath as ex-sources
+    # Mark every block adjacent to the change as an ex-source
+    # Propogate "negative light" from the ex-sources
+    # Mark any "overpowering" lights as actual sources
+    # Reset all "negative lights" to 0
+    # Propogate from the actual sources
     if added:
-        # When a block is ADDED:
-        # If the block is directly skylit:
-        # Mark all blocks visibly beneath as ex-sources
-        # Mark every block adjacent to the change as an ex-source
-        # Propogate "negative light" from the ex-sources
-        # Mark any "overpowering" lights as actual sources
-        # Reset all "negative lights" to 0
-        # Propogate from the actual sources
 
         exSources = []
 
@@ -546,37 +544,25 @@ def updateLight(app, blockPos: BlockPos):
                     continue
                 if coordsOccupied(app, nextPos):
                     continue
+
+                heapq.heappush(exSources, (-nextLight, nextPos))
                 
-# ! Working here
-                
-        
+    # When a block is REMOVED:
+    # Note that this can only ever *increase* the light level of a block! So:
+    # If the block is directly skylit:
+    #   Propogate light downwards
+    #   Add every block visibly beneath the change to the queue
+    # 
+    # Add every block adjacent to the change to the queue
     else:
-        # When a block is REMOVED:
-        # Note that this can only ever *increase* the light level of a block! So:
-        # If the block is directly skylit:
-        #   Propogate light downwards
-        #   Add every block visibly beneath the change to the queue
-        # 
-        # Add every block adjacent to the change to the queue
-
-
-        (chunk, localPos) = getChunk(app, blockPos)
-
-        skyExposed = True
-        for y in range(localPos.y + 1, 16):
-            checkPos = BlockPos(localPos.x, y, localPos.z)
-            if chunk.coordsOccupied(checkPos):
-                skyExposed = False
-                break
-
-        print(f"Sky exposed: {skyExposed}")
-
         queue = []
 
         # FIXME: If I ever add vertical chunks this needs to change
         if skyExposed:
             for y in range(localPos.y, -1, -1):
-                if coordsOccupied(app, blockPos):
+                checkPos = BlockPos(localPos.x, y, localPos.z)
+                
+                if chunk.coordsOccupied(checkPos):
                     break
 
                 heapq.heappush(queue, (-7, BlockPos(blockPos.x, y, blockPos.z)))
@@ -588,79 +574,30 @@ def updateLight(app, blockPos: BlockPos):
 
             heapq.heappush(queue, (-lightLevel, gPos))
 
-        visited = []
-
-        while len(queue) > 0:
-            (light, pos) = heapq.heappop(queue)
-            light *= -1
-            if pos in visited:
-                continue
-            visited.append(pos)
-            setLightLevel(app, pos, light)
-
-            for faceIdx in range(0, 12, 2):
-                nextPos = adjacentBlockPos(pos, faceIdx)
-                if nextPos in visited:
-                    continue
-                if not coordsInBounds(app, nextPos):
-                    continue
-                if coordsOccupied(app, nextPos):
-                    continue
-
-                existingLight = getLightLevel(app, nextPos)
-                nextLight = max(light - 1, 0)
-
-                if nextLight > existingLight:
-                    heapq.heappush(queue, (-nextLight, nextPos))
-
-    endTime = time.time()
-
-    timeDiff = (endTime - startTime) * 1000.0
-
-    print(f"updateLight() took {timeDiff:.3f}ms")
-
-# FIXME: This is super broken
-def naiveUpdateLight(app, blockPos: BlockPos):
-    (chunk, localPos) = getChunk(app, blockPos)
-
-    shape = chunk.blocks.shape
     visited = []
-    queue = []
-    for x in range(shape[0]):
-        for z in range(shape[2]):
-            y = shape[1] - 1
-            heapq.heappush(queue, (-7, BlockPos(x, y, z)))
-    
+
     while len(queue) > 0:
         (light, pos) = heapq.heappop(queue)
         light *= -1
         if pos in visited:
             continue
         visited.append(pos)
-        #setLightLevel(app, pos, light)
-        (x, y, z) = pos
-        chunk.lightLevels[x, y, z] = light
-        for faceIdx in range(0, 10, 2):
+        setLightLevel(app, pos, light)
+
+        nextLight = max(light - 1, 0)
+        for faceIdx in range(0, 12, 2):
             nextPos = adjacentBlockPos(pos, faceIdx)
-            globalPos = chunk._globalBlockPos(nextPos)
             if nextPos in visited:
                 continue
-            if not coordsInBounds(app, globalPos):
+            if not coordsInBounds(app, nextPos):
                 continue
-            if coordsOccupied(app, globalPos):
+            if coordsOccupied(app, nextPos):
                 continue
-            if nextPos[0] < 0 or 16 <= nextPos[0]:
-                continue
-            if nextPos[1] < 0 or 16 <= nextPos[1]:
-                continue
-            if nextPos[2] < 0 or 16 <= nextPos[2]:
-                continue
-            if light == 7 and faceIdx == 8:
-                nextLight = 7
-            else:
-                nextLight = max(light - 1, 0)
-
-            heapq.heappush(queue, (-nextLight, nextPos))
+            
+            existingLight = getLightLevel(app, nextPos)
+            
+            if(nextLight > existingLight):
+                heapq.heappush(queue, (-nextLight, nextPos))
         
 # remove blocks from the world and replace with 'air' block
 def removeBlock(app, blockPos: BlockPos):
