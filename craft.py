@@ -146,26 +146,26 @@ def mousePressed(app, event):
     block = world.lookedAtBlock(app)
     
     if block is not None:
-        (position, face) = block
+        (pos, face) = block
         
         if(app.selectedBlock == 'air'):
-            world.removeBlock(app, position)
+            world.removeBlock(app, pos)
         else:
-            [x, y, z] = position
+            [x, y, z] = pos
             
-            if(face == 'left'):
+            if (face == 'left'):
                 x -= 1
-            elif(face == 'right'):
+            elif (face == 'right'):
                 x += 1
-            elif(face == 'bottom'):
+            elif (face == 'bottom'):
                 y -= 1
-            elif(face == 'top'):
+            elif (face == 'top'):
                 y += 1
-            elif(face == 'back'):
+            elif (face == 'back'):
                 z -= 1
-            elif(face == 'front'):
+            elif (face == 'front'):
                 z += 1
-            
+                            
             world.addBlock(app, world.BlockPos(x, y, z), app.selectedBlock)
             
 def mouseDragged(app, event):

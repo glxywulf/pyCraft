@@ -288,33 +288,47 @@ from cmu_112_graphics import *
 
 # ? DVD logo thing
 
-# def appStarted(app):
-#     app.cx = app.width // 2
-#     app.cy = app.height // 2
-    
-#     app.timerDelay = 1
-    
-#     app.dx = 5
-#     app.dy = 3
-    
-# def timerFired(app):
-#     bounce(app)
-#     app.cx += app.dx
-#     app.cy += app.dy
-    
-# def bounce(app):
-#     if(app.cx - 50 < 0 or app.cx + 50 > app.width):
-#         app.dx *= -1
-#     if(app.cy - 50 < 0 or app.cy + 50 > app.height):
-#         app.dy *= -1
-    
-# def redrawAll(app, canvas):
-#     canvas.create_rectangle(0,0,app.width,app.height,fill='black')
-#     canvas.create_rectangle(app.cx - 50, app.cy - 50, app.cx + 50, app.cy + 50, fill = 'blue', width = 0)
+import random
 
-# runApp(width = 500, height = 500)\
+def appStarted(app):
+    app.cx = app.width // 2
+    app.cy = app.height // 2
     
+    app.timerDelay = 10
     
-test = [(1, 2), (0,1), (5, 4)]
+    app.color = 'blue'
+    app.colorList = ['blue', 'red', 'green', 'purple', 'yellow', 'orange']
+    
+    app.dx = 5
+    app.dy = 3
+    
+def timerFired(app):
+    bounce(app)
+    app.cx += app.dx
+    app.cy += app.dy
+    
+def bounce(app):
+    newColor = random.randrange(0, len(app.colorList))
+    
+    if(app.cx - 50 < 0 or app.cx + 50 > app.width):
+        app.dx *= -1
+        app.color = app.colorList[newColor]
+    if(app.cy - 50 < 0 or app.cy + 50 > app.height):
+        app.dy *= -1
+        app.color = app.colorList[newColor]
+    
+def redrawAll(app, canvas):
+    canvas.create_rectangle(0,0,app.width,app.height,fill='black')
+    canvas.create_rectangle(app.cx - 50, app.cy - 50, app.cx + 50, app.cy + 50, fill = app.color, width = 0)
 
-print("yup") if (5,4) in test else print("nope")
+runApp(width = 500, height = 500)
+    
+    
+# test = [(1, 2), (0,1), (5, 4)]
+
+# print("yup") if (5,4) in test else print("nope")
+
+# def 你好(hi, bye):
+#     return f"{hi}, {bye}"
+
+# print(你好(8358, "耗子..................."))

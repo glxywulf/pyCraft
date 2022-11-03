@@ -485,6 +485,10 @@ def drawToCanvas(app, canvas, faces):
 frameTimes = [0.0] * 10
 frameIndex = 0
 
+def drawTextOutlined(canvas, x, y, **kwargs):
+    canvas.create_text(x + 1, y + 1, fill = 'black', **kwargs)
+    canvas.create_text(x, y, fill = 'white', **kwargs)
+
 def redrawAll(app, canvas):
     # get an initial time
     startTime = time.time()
@@ -515,8 +519,7 @@ def redrawAll(app, canvas):
     tickTime = sum(app.tickTimes) / len(app.tickTimes) * 1000.0
 
     # This makes it more easily legible on both dark and light backgrounds
-    canvas.create_text(11, 21, text=f'Tick Time: {tickTime:.2f}ms', anchor='nw')
-    canvas.create_text(10, 20, text=f'Tick Time: {tickTime:.2f}ms', anchor='nw', fill='white')
+    drawTextOutlined(canvas, 10, 25, text = f"Tick Time: {tickTime:.2f}ms", anchor = 'nw')
     
     # access the variables global in this file
     global frameTimes
@@ -535,6 +538,11 @@ def redrawAll(app, canvas):
     # average the times in order to get the frame rate
     frameTime = sum(frameTimes) / len(frameTimes) * 1000.0
 
-    canvas.create_text(11, 11, text=f'Frame Time: {frameTime:.2f}ms', anchor='nw')
-    canvas.create_text(10, 10, text=f'Frame Time: {frameTime:.2f}ms', anchor='nw', fill='white')
+    drawTextOutlined(canvas, 10, 10, text = f"Frame Time: {frameTime:.2f}ms", anchor = 'nw')
+
+    chunkX = int(app.cameraPos[0] / 16)
+    chunkY = int(app.cameraPos[1] / 16)
+    chunkZ = int(app.cameraPos[2] / 16)
+
+    drawTextOutlined(canvas, 10, 55, text = f"Chunk coords: {chunkX}, {chunkY}, {chunkZ}", anchor = 'nw')
     
