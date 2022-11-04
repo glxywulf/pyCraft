@@ -47,7 +47,7 @@ def appStarted(app):
     app.vpWidth = 3.0 / 4.0
     app.vpHeight = app.vpWidth * app.height / app.width
     app.wireframe = False
-    app.renderDistanceSq = 6 ** 2
+    app.renderDistanceSq = 10 ** 2
     
     # field of view values
     app.horiFOV = math.atan(app.vpWidth / app.vpDist)
@@ -105,10 +105,30 @@ def loadResources(app):
         '#BBCCAA', '#BBBBBB'
     ]
     
+    leavesTexture = [
+        '#206000', '#256505',
+        '#257000', '#256505',
+        '#206010', '#206505',
+        '#206505', '#256005',
+        '#306005', '#256500',
+        '#206500', '#306505',
+    ]
+    
+    logTexture = [
+        '#705020', '#655020',
+        '#705520', '#655025',
+        '#705025', '#705020',
+        '#755020', '#705A2A',
+        '#755520', '#7A4A20',
+        '#705525', '#70502A',
+    ]
+    
     # texture dictionary for efficient calling
     app.textures = {
         'grass' : grassTexture,
-        'stone' : stoneTexture
+        'stone' : stoneTexture,
+        'leaves' : leavesTexture,
+        'log' : logTexture
     }
     
     # tuples that contain directional values equivalent to faces
@@ -210,6 +230,10 @@ def keyPressed(app, event):
         app.selectedBlock = 'grass'
     elif(event.key == '3'):
         app.selectedBlock = 'stone'
+    elif(event.key == '4'):
+        app.selectedBlock = 'leaves'
+    elif(event.key == '5'):
+        app.selectedBlock = 'log'
     elif(event.key == 'w'):
         app.w = True
     elif(event.key == 's'):

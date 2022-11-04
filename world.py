@@ -4,6 +4,8 @@ import heapq
 import render
 import time
 import perlin
+import random
+from enum import IntEnum
 from math import cos, sin
 from numpy import ndarray
 from typing import NamedTuple, List, Any, Tuple, Optional
@@ -23,6 +25,55 @@ class BlockPos(NamedTuple):
 # what kind of block a block is
 BlockId = str
 
+# Places a tree with its bottommost log at the given position in the world.
+# If `doUpdates` is True, this recalculates the lighting and block visibility.
+# Normally that's a good thing, but during worldgen it's redundant.
+def generateTree(app, basePos: BlockPos, doUpdates = True):
+    x = basePos.x
+    y = basePos.y
+    z = basePos.z
+    
+    # place bottom logs
+    setBlock(app, basePos, 'log', doUpdateLight = doUpdates, doUpdateBuried = doUpdates)
+    y += 1
+    setBlock(app, BlockPos(x, y, z), 'log', doUpdateLight = doUpdates, doUpdateBuried = doUpdates)
+    
+    # place logs with leaves around them
+    for _ in range(2):
+        y += 1
+        setBlock(app, BlockPos(x, y, z), 'log', doUpdateLight = doUpdates, doUpdateBuried = doUpdates)
+        
+        for xOffset in range(-2, 2 + 1):
+            for zOffset in range(-2, 2 + 1):
+                if((abs(xOffset) == 2) and (abs(zOffset) == 2)):
+                    continue
+                if((xOffset == 0) and (zOffset == 0)):
+                    continue
+                
+                setBlock(app, BlockPos(x + xOffset, y, z + zOffset), 'leaves', doUpdateLight = doUpdates, doUpdateBuried = doUpdates)
+    
+    # narrower top part
+    y += 1
+    setBlock(app, BlockPos(x - 1, y, z), 'leaves', doUpdateLight=doUpdates, doUpdateBuried=doUpdates)
+    setBlock(app, BlockPos(x + 1, y, z), 'leaves', doUpdateLight=doUpdates, doUpdateBuried=doUpdates)
+    setBlock(app, BlockPos(x, y, z - 1), 'leaves', doUpdateLight=doUpdates, doUpdateBuried=doUpdates)
+    setBlock(app, BlockPos(x, y, z + 1), 'leaves', doUpdateLight=doUpdates, doUpdateBuried=doUpdates)
+    setBlock(app, BlockPos(x, y, z), 'log', doUpdateLight=doUpdates, doUpdateBuried=doUpdates)
+    
+    # top cap of just leaves
+    y += 1
+    setBlock(app, BlockPos(x - 1, y, z), 'leaves', doUpdateLight=doUpdates, doUpdateBuried=doUpdates)
+    setBlock(app, BlockPos(x + 1, y, z), 'leaves', doUpdateLight=doUpdates, doUpdateBuried=doUpdates)
+    setBlock(app, BlockPos(x, y, z - 1), 'leaves', doUpdateLight=doUpdates, doUpdateBuried=doUpdates)
+    setBlock(app, BlockPos(x, y, z + 1), 'leaves', doUpdateLight=doUpdates, doUpdateBuried=doUpdates)
+    setBlock(app, BlockPos(x, y, z), 'leaves', doUpdateLight=doUpdates, doUpdateBuried=doUpdates)
+    
+class WorldgenStage(IntEnum):
+    NOT_STARTED = 0,
+    GENERATED = 1,
+    POPULATED = 2,
+    COMPLETE = 3
+
 # chunk object
 class Chunk:
     pos: ChunkPos
@@ -30,7 +81,7 @@ class Chunk:
     lightLevels: ndarray
     instances: List[Any]
 
-    isFinalized: bool = False
+    worldgenStage: WorldgenStage = WorldgenStage.NOT_STARTED
     isTicking: bool = False
     isVisible: bool = False
     
@@ -52,6 +103,7 @@ class Chunk:
             for zIdx in range(0, 16):
                 globalPos = self._globalBlockPos(BlockPos(xIdx, 0, zIdx))
 
+                # FIXME: use a seed
                 noise = perlin.getPerlinFractal(globalPos.x, globalPos.z, 1.0 / 256.0, 4)
 
                 if noise < minVal: minVal = noise
@@ -64,7 +116,42 @@ class Chunk:
                     blockId = 'grass' if yIdx == topY - 1 else 'stone'
                     self.setBlock(app, BlockPos(xIdx, yIdx, zIdx), blockId, doUpdateLight = False, doUpdateBuried = False)
                     
-        print(f"minval: {minVal}, maxval: {maxVal}")
+        # print(f"minval: {minVal}, maxval: {maxVal}")
+        
+        self.worldgenStage = WorldgenStage.GENERATED
+        
+    def populate(self, app):
+        # FIXME: use a seed
+        random.seed(hash(self.pos))
+        
+        treePos = []
+        
+        for treeIdx in range(2):
+            treeX = random.randint(1, 15)
+            treeZ = random.randint(1, 15)
+            
+            for prevPos in treePos:
+                dist = abs(prevPos[0] - treeX) + abs(prevPos[1] - treeZ)
+                
+                if(dist <= 4):
+                    continue
+                
+            treePos.append((treeX, treeZ))
+            
+            baseY = 15
+            
+            # FIXME: y coords
+            for yIdx in range(15, 0, -1):
+                if self.coordsOccupied(BlockPos(treeX, yIdx, treeZ)):
+                    baseY = yIdx + 1
+                    break
+                
+            globalPos = self._globalBlockPos(BlockPos(treeX, baseY, treeZ))
+            
+            if(globalPos.y < 10):
+                generateTree(app, globalPos, doUpdates = False)
+        
+        self.worldgenStage = WorldgenStage.POPULATED
     
     # set the visible faces of every single block in every chunk and finalize block face states
     def lightAndOptimize(self, app):
@@ -74,12 +161,12 @@ class Chunk:
                 for zIdx in range(0, 16):
                     self.updateBuriedStateAt(app, BlockPos(xIdx, yIdx, zIdx))
                     
-        self.isFinalized = True
+        self.worldgenStage = WorldgenStage.COMPLETE
     
     # make an interable generator object that contains all of the Blocks(specified
     # by position) and their instances.
     def iterInstances(self):
-        if self.isFinalized and self.isVisible:
+        if (self.isVisible and (self.worldgenStage == WorldgenStage.COMPLETE)):
             for (i, instance) in enumerate(self.instances):
                 if instance is not None:
                     wx = self.pos.x * 16 + (i // 256)
@@ -175,7 +262,7 @@ class Chunk:
             
             # set the blocks instance in self.instances as a list that contains the Instance object from
             # render file, and a boolean which represents whether or not the block is buried
-            self.instances[idx] = [render.Instance(app.cube, np.array([[modelX], [modelY], [modelZ]]), texture), False]
+            self.instances[idx] = [render.Instance(app.cube, np.array([[modelX], [modelY], [modelZ]]), texture), True]
             
             # check if we need to update whether block is buried or not
             if doUpdateBuried:
@@ -230,9 +317,9 @@ def coordsOccupied(app, pos: BlockPos) -> bool:
     return chunk.coordsOccupied(innerPos)
 
 # access the setBlock class function of chunk outside of chunk object
-def setBlock(app, pos: BlockPos, id: BlockId, doUpdateLight=True) -> None:
+def setBlock(app, pos: BlockPos, id: BlockId, doUpdateLight = True, doUpdateBuried = True) -> None:
     (chunk, innerPos) = getChunk(app, pos)
-    chunk.setBlock(app, innerPos, id, doUpdateLight)
+    chunk.setBlock(app, innerPos, id, doUpdateLight, doUpdateBuried)
     
 # returns the chunk's world position based off of a global block position
 def toChunkLocal(pos: BlockPos) -> Tuple[ChunkPos, BlockPos]:
@@ -360,23 +447,36 @@ def loadUnloadChunks(app):
 
 # return the number of loaded adjacent chunks
 def countLoadedAdjacentChunks(app, chunkPos: ChunkPos, dist: int) -> int:
-    count = 0
+    totalCount = 0
+    genCount = 0
+    popCount = 0
+    comCount = 0
+    
     for pos in adjacentChunks(chunkPos, dist):
         if pos in app.chunks:
-            count += 1
+            totalCount += 1
+            chunk = app.chunks[pos]
+            
+            if(chunk.worldgenStage >= WorldgenStage.GENERATED): genCount += 1
+            if(chunk.worldgenStage >= WorldgenStage.POPULATED): popCount += 1
+            if(chunk.worldgenStage >= WorldgenStage.COMPLETE):  comCount += 1
     
-    return count
+    return (totalCount, genCount, popCount, comCount)
 
 # light and optimize chunk if chunk is finalized and its next to 8 chunks
 def tickChunks(app):
     for chunkPos in app.chunks:
         chunk = app.chunks[chunkPos]
-        adjacentChunks = countLoadedAdjacentChunks(app, chunkPos, 1)
-        if not chunk.isFinalized and adjacentChunks == 8:
+        (adj, gen, pop, com) = countLoadedAdjacentChunks(app, chunkPos, 1)
+        
+        if((chunk.worldgenStage == WorldgenStage.GENERATED) and (gen == 8)):
+            chunk.populate(app)
+        
+        if((chunk.worldgenStage == WorldgenStage.POPULATED) and (gen == 8)):
             chunk.lightAndOptimize(app)
             
-        chunk.isVisible = adjacentChunks == 8
-        chunk.isTicking = adjacentChunks == 8
+        chunk.isVisible = chunk.worldgenStage == WorldgenStage.COMPLETE
+        chunk.isTicking = ((chunk.isVisible) and (adj == 8))
         
 # Ticking is done in stages so that collision detection works as expected:
 # First we update the player's Y position and resolve Y collisions,
