@@ -3,12 +3,41 @@ import numpy as np
 import math
 import render
 import world
+from button import Button, ButtonManager
 from world import Chunk, ChunkPos
 from typing import List
-import perlin_noise
+from enum import Enum
+
+class GameState(Enum):
+    STARTUP = 1
+    TITLE = 2
+    PLAYING = 3
+
+def createSizedBackground(app, width : int, height : int):
+    cobble = app.loadImage('assets/cobbleBackground.jpg')
+    cobble = app.scaleImage(cobble, 2)
+    cWidth, cHeight = cobble.size
+    
+    newCobble = Image.new(cobble.mode, (width, height))
+    
+    for xIdx in range(math.ceil(width / cWidth)):
+        for yIdx in range(math.ceil(height / cHeight)):
+            xOffset = xIdx * cWidth
+            yOffset = yIdx * cHeight
+            
+            newCobble.paste(cobble, (xOffset, yOffset))
+            
+    return newCobble
 
 def appStarted(app):
     loadResources(app)
+    
+    app.titleText = app.loadImage('assets/titleText.png')
+    app.titleText = app.scaleImage(app.titleText, 3)
+    
+    app.btnBg = createSizedBackground(app, 200, 40)
+    
+    app.state = GameState.TITLE
     
     # * World Variables and stuff~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # all the chunks
@@ -39,7 +68,7 @@ def appStarted(app):
     # camera stuffs
     app.cameraYaw = 0
     app.cameraPitch = 0
-    app.cameraPos = [4.0, 14.0 + app.playerHeight, 4.0]
+    app.cameraPos = [4.0, 8.0 + app.playerHeight, 4.0]
     
     # * Rendering variables and stuff~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # view point informations
@@ -47,7 +76,7 @@ def appStarted(app):
     app.vpWidth = 3.0 / 4.0
     app.vpHeight = app.vpWidth * app.height / app.width
     app.wireframe = False
-    app.renderDistanceSq = 10 ** 2
+    app.renderDistanceSq = 6 ** 2
     
     # field of view values
     app.horiFOV = math.atan(app.vpWidth / app.vpDist)
@@ -71,7 +100,13 @@ def appStarted(app):
     
     app.prevMouse = None
     
-    app.capMouse = False
+    app.captureMouse = False
+    
+    app.buttons = ButtonManager()
+    
+    # FIXME: This does not work with resizing!
+    # type: ignore
+    app.buttons.addButton('playSurvival', Button(app.width / 2, app.height / 2, background = app.btnBg, text = "Play Survival")) 
     
 
 def loadResources(app):
@@ -163,6 +198,8 @@ def sizeChanged(app):
 # define a couple things that happen when a mouse is pressed
 #? Haven't added the check statements which check for a specific mouse press yet but the idea still there
 def mousePressed(app, event):
+    app.buttons.onPress(event.x, event.y)
+    
     block = world.lookedAtBlock(app)
     
     if block is not None:
@@ -188,6 +225,16 @@ def mousePressed(app, event):
                             
             world.addBlock(app, world.BlockPos(x, y, z), app.selectedBlock)
             
+def mouseReleased(app, event):
+    btn = app.buttons.onRelease(event.x, event.y)
+    
+    if(btn is not None):
+        print(f"Pressed{btn}")
+        
+        if(btn == 'playSurvival'):
+            app.state = GameState.PLAYING
+            app.buttons.buttons = {}
+            
 def mouseDragged(app, event):
     mouseMovedOrDragged(app, event)
 
@@ -196,7 +243,7 @@ def mouseMoved(app, event):
     mouseMovedOrDragged(app, event)
     
 def mouseMovedOrDragged(app, event):
-    if not app.capMouse:
+    if not app.captureMouse:
         app.prevMouse = None
     
     if app.prevMouse is not None:
@@ -212,7 +259,7 @@ def mouseMovedOrDragged(app, event):
             
         app.cameraYaw += (xChange * .01)
         
-    if app.capMouse:
+    if app.captureMouse:
         x = app.width / 2
         y = app.height / 2
         app._theRoot.event_generate('<Motion>',  warp = True, x = x, y = y)
@@ -220,10 +267,16 @@ def mouseMovedOrDragged(app, event):
 
 # essentially the update function will call every app.timerDelay milliseconds
 def timerFired(app):
+    if(app.state == GameState.TITLE):
+        app.cameraYaw += 0.01
+    
     world.tick(app)
 
 # define what happens when keys are pressed
 def keyPressed(app, event):
+    if(app.state == GameState.TITLE):
+        return
+    
     if(event.key == '1'):
         app.selectedBlock = 'air'
     elif(event.key == '2'):
@@ -245,9 +298,9 @@ def keyPressed(app, event):
     elif(event.key == 'Space' and app.playerOnGround):
         app.playerVel[1] = .35
     elif(event.key == 'Escape'):
-        app.capMouse = not app.capMouse
+        app.captureMouse = not app.captureMouse
         
-        if app.capMouse:
+        if app.captureMouse:
             app._theRoot.config(cursor = "none")
         else:
             app._theRoot.config(cursor = "")
@@ -262,13 +315,29 @@ def keyReleased(app, event):
         app.a = False
     elif(event.key == 'd'):
         app.d = False
+        
+def onPlayClicked(app):
+    print("foobar")
+    app.state = GameState.PLAYING
+    
+# From:
+# https://www.kosbie.net/cmu/fall-19/15-112/notes/notes-animations-part2.html
+def getCachedImage(image):
+    if ('cachedPhotoImage' not in image.__dict__):
+        image.cachedPhotoImage = ImageTk.PhotoImage(image)
+    return image.cachedPhotoImage
 
 # call the draw function
 def redrawAll(app, canvas):
     render.redrawAll(app, canvas)
     
+    if app.state == GameState.TITLE:
+        canvas.create_image(app.width / 2, 50, image=getCachedImage(app.titleText))
+    
+    app.buttons.draw(app, canvas)
+    
 def main():
-    runApp(width = 600, height = 400, mvcCheck = False)
+    runApp(width = 600, height = 400, mvcCheck = True)
     
 if (__name__ == '__main__'):
     main()
