@@ -15,7 +15,7 @@ class GameState(Enum):
 
 def createSizedBackground(app, width : int, height : int):
     cobble = app.loadImage('assets/cobbleBackground.jpg')
-    cobble = app.scaleImage(cobble, 2)
+    cobble = app.scaleImage(cobble, .5)
     cWidth, cHeight = cobble.size
     
     newCobble = Image.new(cobble.mode, (width, height))
@@ -33,7 +33,7 @@ def appStarted(app):
     loadResources(app)
     
     app.titleText = app.loadImage('assets/titleText.png')
-    app.titleText = app.scaleImage(app.titleText, 3)
+    app.titleText = app.scaleImage(app.titleText, .5)
     
     app.btnBg = createSizedBackground(app, 200, 40)
     
@@ -332,7 +332,7 @@ def redrawAll(app, canvas):
     render.redrawAll(app, canvas)
     
     if app.state == GameState.TITLE:
-        canvas.create_image(app.width / 2, 50, image=getCachedImage(app.titleText))
+        canvas.create_image(app.width / 2, 150, image=getCachedImage(app.titleText))
     
     app.buttons.draw(app, canvas)
     
